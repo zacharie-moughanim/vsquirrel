@@ -114,7 +114,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	if (lsp_server.stdout !== null) {
 		lsp_server.stdout.on('data', (data : string) => {
+			// TODO parse, add header to server messages to etc...
 			console.log(`==stdout==\n${data}\n==end stdout==`);
+			debugChannel.appendLine(data.toString());
 		});
 	} else {
 		console.error("LSP server: stdout undefined");
@@ -158,7 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const startProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.startProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
 			endProofPosition = new vscode.Position(0, 0);
-			LSPSend({method:"vsquirrel/startProof"}, true);
+			LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath}, true);
 		}
 	);
 	
@@ -172,7 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage("No dot to get the proof to in the remaining of the document.");
 				} else {
 					const bufferProof = textEditor.document.getText(new vscode.Range(endProofPosition, nextDotPosition));
-					LSPSend({method:"vsquirrel/nextProof", args: bufferProof}, true);
+					LSPSend({method:"vsquirrel/nextProof", proofCommand: bufferProof}, true);
 					textEditor.selection = new vscode.Selection(nextDotPosition, nextDotPosition);
 					textEditor.setDecorations(testDeco, [new vscode.Range(startDocumentPosition, nextDotPosition)]);
 					endProofPosition = new vscode.Position(nextDotPosition.line, nextDotPosition.character);
