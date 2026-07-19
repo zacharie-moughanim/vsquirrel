@@ -4,7 +4,7 @@
   "description": "VScod{e,ium} extension for Squirrel proof assistant.",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Other"
