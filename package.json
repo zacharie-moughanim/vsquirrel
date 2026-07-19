@@ -2,13 +2,20 @@
   "name": "vsquirrel",
   "displayName": "vsquirrel",
   "description": "VScod{e,ium} extension for Squirrel proof assistant.",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.100.0"
-  },
   "categories": [
-    "Other"
+    "Programming Languages"
   ],
+  "publisher": "zacharie-moughanim",
+  "icon": "./icons/squirrel_logo.png",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zacharie-moughanim/vsquirrel.git"
+  },
+  "engines": {
+    "vscode": "^1.105.0"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -16,6 +23,27 @@
       {
         "command": "vsquirrel.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "vsquirrel.sendStuff",
+        "title": "Send Stuff"
+      }
+    ],
+    "languages": [
+      {
+        "id": "squirrel-prover",
+        "extensions": [
+          ".sp"
+        ],
+        "aliases": [
+          "SquirrelProver"
+        ],
+        "filenames": [],
+        "configuration": "./squirrel-prover-language-configuration.json",
+        "icon": {
+          "light": "./icons/squirrel_light.png",
+          "dark": "./icons/squirrel_dark.png"
+        }
       }
     ]
   },
