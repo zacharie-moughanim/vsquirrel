@@ -1,0 +1,3 @@
+[submodule "server/pysquirrel-prover-lsp"]
+	path = server/pysquirrel-prover-lsp
+	url = https://github.com/zacharie-moughanim/pysquirrel-prover-lsp.git
