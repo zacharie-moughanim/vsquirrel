@@ -21,14 +21,40 @@
   "contributes": {
     "commands": [
       {
-        "command": "vsquirrel.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "vsquirrel.sendStuff",
         "title": "Send Stuff"
+      },
+      {
+        "command": "vsquirrel.killServer",
+        "title": "Kill LSP server"
+      },
+      {
+        "command": "vsquirrel.nextProof",
+        "title": "Proof Next Point"
+      },
+      {
+        "command": "vsquirrel.startProof",
+        "title": "Start Proof"
       }
     ],
+    "configuration": {
+      "title": "Squirrel Prover",
+      "type": "object",
+      "properties": {
+        "SquirrelProver.lsp.pythonInterpreterPath": {
+          "type": "string",
+          "markdownDescription": "Path to a python interpreter used to run the LSP server. default:python",
+          "default": "python",
+          "order": 0
+        },
+        "SquirrelProver.squirrelPath": {
+          "type": "string",
+          "markdownDescription": "Path to squirrel. default:~/squirrel-prover/squirrel",
+          "default": "~/squirrel-prover/squirrel",
+          "order": 1
+        }
+      }
+    },
     "languages": [
       {
         "id": "squirrel-prover",
