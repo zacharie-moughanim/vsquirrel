@@ -9,6 +9,10 @@ const { spawn } = require('node:child_process');
 const net = require('node:net');
 const assert = require('node:assert');
 
+var ConvertANSIToHTML = require('ansi-to-html');
+
+var convertANSIToHTML = new ConvertANSIToHTML();
+
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
 var client : any;
@@ -69,6 +73,26 @@ function nextCharacterPosition(doc : vscode.TextDocument, from : vscode.Position
 	}
 }
 
+/// Returns proof states in an HTML page, adapted to display in a webview.
+function proofStateAsWebview(body : string) : string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Coding</title>
+</head>
+<body>
+    <p>
+			${convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>")}
+		</p>
+</body>
+</html>`;
+}
+
+// Side panel. [undefined] means the proof panel does not exist at the time.
+var proofPanel : vscode.WebviewPanel | undefined = undefined;
+
 /// Find position of next dot in the [doc] from the position [from], ignoring comments e.g. on [(* a sentence. *) Proof.], it returns the position of the second dot.
 function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode.Position | undefined {
 	var prevChar : string;
@@ -128,6 +152,12 @@ export function activate(context: vscode.ExtensionContext) {
 	if (lsp_server.stdout !== null) {
 		lsp_server.stdout.on('data', (data : string) => {
 			// TODO parse, add header to server messages to etc...
+			const objRcvd = JSON.parse(data);
+			if (Object.hasOwn(objRcvd, "method")) {
+				if (objRcvd.method === "vsquirrel/squirrelOutput" && proofPanel !== undefined) {
+					proofPanel.webview.html = proofStateAsWebview(objRcvd.payload);
+				}
+			}
 			console.log(`==stdout==\n${data}\n==end stdout==`);
 			debugChannel.appendLine(data.toString());
 		});
@@ -159,17 +189,27 @@ export function activate(context: vscode.ExtensionContext) {
 	var processedProofColor = "#00f04857";
 	var testDeco = vscode.window.createTextEditorDecorationType({backgroundColor : processedProofColor});
 
+	// For debugging, kill LSP server
 	const killServer = vscode.commands.registerCommand('vsquirrel.killServer', () => {
 		lsp_server.kill();
 	});
 
 	const startProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.startProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
+			// Setting position of last processed point in the proof at the beginning of the file.
 			endProofPosition = new vscode.Position(0, 0);
+			// Sending path to squirrel to the LSP server
 			LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath}, true);
+			// Creating panel where the goals are displayed
+			proofPanel = vscode.window.createWebviewPanel(
+				"squirrel-prover-proof",
+				`Squirrel ${textEditor.document.fileName}`,
+				{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
+			);
 		}
 	);
 	
+	// Process proof until next [.]
 	const nextProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.nextProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
 			if (endProofPosition === undefined) {
@@ -179,10 +219,13 @@ export function activate(context: vscode.ExtensionContext) {
 				if (nextDotPosition === undefined) {
 					vscode.window.showErrorMessage("No dot to get the proof to in the remaining of the document.");
 				} else {
+					// Send proof to process to LSP server
 					const bufferProof = textEditor.document.getText(new vscode.Range(endProofPosition, nextDotPosition));
 					LSPSend({method:"vsquirrel/nextProof", proofCommand: bufferProof}, true);
+					// Update highlighting of processed proof
 					textEditor.selection = new vscode.Selection(nextDotPosition, nextDotPosition);
 					textEditor.setDecorations(testDeco, [new vscode.Range(startDocumentPosition, nextDotPosition)]);
+					// Update last processed point in the proof
 					endProofPosition = new vscode.Position(nextDotPosition.line, nextDotPosition.character);
 				}
 			}
