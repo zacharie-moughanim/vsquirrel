@@ -31,7 +31,7 @@
       {
         "command": "vsquirrel.startProof",
         "title": "Start Proof",
-        "icon": "$(file-code)"
+        "icon": "$(debug-start)"
       }
     ],
     "configuration": {

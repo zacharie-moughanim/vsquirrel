@@ -46,7 +46,7 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 		}
 		const data : string = JSON.stringify(obj2);
 		const msg_with_header : string = `Content-Length: ${data.length}\r\n\r\n${data}`;
-		lsp_server.stdin.write(`${msg_with_header}\r\n`);
+		lsp_server.stdin.write(`${msg_with_header}`);
 		console.log(`==== Sent ====\n${msg_with_header}\n============`);
 	}
 }
@@ -69,19 +69,32 @@ function nextCharacterPosition(doc : vscode.TextDocument, from : vscode.Position
 	}
 }
 
-/// Find position of next dot in the [doc] from the position [from].
+/// Find position of next dot in the [doc] from the position [from], ignoring comments e.g. on [(* a sentence. *) Proof.], it returns the position of the second dot.
 function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode.Position | undefined {
-	var curChar : string;
+	var prevChar : string;
+	var curChar : string = "";
 	var curPos : vscode.Position = from;
 	var nextPos : vscode.Position | undefined;
+	var lastCharWasHalfOfACommentBracket : boolean = false;
+	var withinComment : boolean = false;
 	do {
 		nextPos = nextCharacterPosition(doc, curPos);
 		if (nextPos === undefined) {
 			return undefined;
 		}
+		prevChar = curChar;
 		curChar = doc.getText(new vscode.Range(curPos, nextPos));
 		curPos = nextPos;
-	} while (curChar !== '.');
+		if (withinComment) {
+			if (prevChar === "*" && curChar === ")") {
+				withinComment = false;
+			}
+		} else {
+			if (prevChar === "(" && curChar === "*") {
+				withinComment = true;
+			}
+		}
+	} while (!(curChar === '.' && !withinComment));
 	return nextPos;
 }
 
