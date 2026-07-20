@@ -146,13 +146,6 @@ export function activate(context: vscode.ExtensionContext) {
 	var processedProofColor = "#00f04857";
 	var testDeco = vscode.window.createTextEditorDecorationType({backgroundColor : processedProofColor});
 
-	// Command to send test message to LSP server
-	const sendStuff = vscode.commands.registerCommand('vsquirrel.sendStuff', () => {
-		send(JSON.stringify({
-			method: "TEST"
-		}));
-	});
-
 	const killServer = vscode.commands.registerCommand('vsquirrel.killServer', () => {
 		lsp_server.kill();
 	});
@@ -183,7 +176,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	context.subscriptions.push(sendStuff);
 	context.subscriptions.push(killServer);
 	context.subscriptions.push(nextProofCmd);
 	context.subscriptions.push(startProofCmd);

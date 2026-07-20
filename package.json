@@ -21,10 +21,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "vsquirrel.sendStuff",
-        "title": "Send Stuff"
-      },
-      {
         "command": "vsquirrel.killServer",
         "title": "Kill LSP server"
       },
@@ -34,7 +30,8 @@
       },
       {
         "command": "vsquirrel.startProof",
-        "title": "Start Proof"
+        "title": "Start Proof",
+        "icon": "$(file-code)"
       }
     ],
     "configuration": {
@@ -70,6 +67,22 @@
           "light": "./icons/squirrel_light.png",
           "dark": "./icons/squirrel_dark.png"
         }
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "when": "resourceLangId == squirrel-prover && editorTextFocus",
+          "command": "vsquirrel.startProof"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vsquirrel.nextProof",
+        "key": "alt+down",
+        "mac": "ctrl+alt+down",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
       }
     ]
   },
