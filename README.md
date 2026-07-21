@@ -17,6 +17,8 @@ TODO (paths to squirrel and python)
 
 - When calling proof next when the dot is the last character of the file (without newline afterward), the highlighting persist on the whole file, even after modification.
 - `nextProof` command will always assume that the proof tactic/etc processed worked...
+- Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
+- Only one squirrel file can be supported at a time.
 
 ## Release Notes
 
