@@ -199,8 +199,6 @@ export function activate(context: vscode.ExtensionContext) {
 							waitingForProofProcessing = false;
 						}
 					}
-				} else if (objRcvd.method === "vsquirrel/lsperror" && proofPanel !== undefined) {
-					vscode.window.showErrorMessage(`VSquirrel LSP Error: ${objRcvd.data}`);
 				}
 			}
 			console.log(`==stdout==\n${data}\n==end stdout==`);
@@ -212,7 +210,18 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	if (lsp_server.stderr !== null) {
 		lsp_server.stderr.on('data', (data : string) => {
-			vscode.window.showErrorMessage(`VSquirrel LSP server error message: ${data}`);
+			const objRcvd = JSON.parse(data);
+			if (Object.hasOwn(objRcvd, "method")) {
+				if (objRcvd.method === "vsquirrel/lsperror") {
+					vscode.window.showWarningMessage(`VSquirrel LSP error message: ${objRcvd.data}`);
+				} else if (objRcvd.method === "vsquirrel/debug") {
+					vscode.window.showInformationMessage(`VSquirrel LSP Error message: ${objRcvd.data}`);
+				} else {
+					vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+				}
+			} else {
+				vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+			}
 			console.error(`==stderr==\n${data}\n==end stderr==`);
 		});
 	} else {
