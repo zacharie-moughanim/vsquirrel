@@ -24,9 +24,12 @@ const configSquirrelPath : string | undefined = vscode.workspace.getConfiguratio
 // The LSP server subprocess
 var lsp_server : ChildProcess;
 
-// Position of the beginning of the document and of the last point where the proof was processed.
+// Position of the beginning of the document, of the last point requested to be processed, and of the last point where the proof was processed. TODO wrap this in an object or something
 const startDocumentPosition = new vscode.Position(0, 0);
 var endProofPosition : vscode.Position | undefined = undefined;
+var lastProcessedPointProofPosition : vscode.Position | undefined = undefined;
+var waitingForProofProcessing : boolean = false; // === (lastProcessedPointProofPosition !== endProofPosition)
+var currentEditor : vscode.TextEditor | undefined = undefined;
 
 /// Sends [msg] to LSP server
 function send(msg : string) {
@@ -73,19 +76,32 @@ function nextCharacterPosition(doc : vscode.TextDocument, from : vscode.Position
 	}
 }
 
+/// Convert Squirrel's output to text suitable for HTML
+function squirrelAsHTML(body : string) : string {
+	return convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>");
+}
+
+// Global state maintaining what's to be displayed on the proof panel.
+var proofStateMain : string;
+var proofStateErrors : string | undefined = undefined; // Must be reset to [undefined] at each new command.
 /// Returns proof states in an HTML page, adapted to display in a webview.
-function proofStateAsWebview(body : string) : string {
-	return `<!DOCTYPE html>
+function updateProofStateInWebview(panel : vscode.WebviewPanel) : void {
+	var HTMLProofStateErrors = "";
+	if (proofStateErrors !== undefined) {
+		HTMLProofStateErrors = `<p id="errors"> ${proofStateErrors} </p>`;
+	}
+	panel.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Coding</title>
+    <title>Squirrel Proof</title>
 </head>
 <body>
-    <p>
-			${convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>")}
+    <p id="main">
+			${proofStateMain}
 		</p>
+		${HTMLProofStateErrors}
 </body>
 </html>`;
 }
@@ -124,8 +140,15 @@ function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('VSquirrel is now active.');
-	
 	debugChannel = vscode.window.createOutputChannel("Squirrel Debug", {log : true});
+
+	// Decorations
+	var processingProofColor = "#c3f8d357";
+	var processedProofColor = "#00f04857";
+	var processedErrorProofColor = "#f0000057";
+	var decorationProcessingProof = vscode.window.createTextEditorDecorationType({backgroundColor : processingProofColor});
+	var decorationProcessedProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedProofColor});
+	var decorationErrorProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedErrorProofColor});
 
 	// Finding paths to python and squirrel
 	var pythonPath : string;
@@ -151,11 +174,33 @@ export function activate(context: vscode.ExtensionContext) {
 
 	if (lsp_server.stdout !== null) {
 		lsp_server.stdout.on('data', (data : string) => {
-			// TODO parse, add header to server messages to etc...
 			const objRcvd = JSON.parse(data);
 			if (Object.hasOwn(objRcvd, "method")) {
-				if (objRcvd.method === "vsquirrel/squirrelOutput" && proofPanel !== undefined) {
-					proofPanel.webview.html = proofStateAsWebview(objRcvd.payload);
+				if (objRcvd.method === "vsquirrel/squirrelProofOutput" && proofPanel !== undefined) {
+					// Display proof state/message from squirrel on proof panel
+					if(objRcvd.kind === "error") {
+						// Display error messages from squirrel on proof panel
+						proofStateErrors = squirrelAsHTML(objRcvd.payload);
+						updateProofStateInWebview(proofPanel);
+						// Highlight the command that triggered the error
+						if (currentEditor !== undefined && lastProcessedPointProofPosition !== undefined && endProofPosition !== undefined) {
+							currentEditor.setDecorations(decorationErrorProof, [new vscode.Range(lastProcessedPointProofPosition, endProofPosition)]);
+						}
+					} else {
+						proofStateMain = squirrelAsHTML(objRcvd.payload);
+						updateProofStateInWebview(proofPanel);
+						if (currentEditor !== undefined && lastProcessedPointProofPosition !== undefined && endProofPosition !== undefined) {
+							// Remove previous processing highlighting and error highlighting, if any; and highlight the command that was just processed
+							currentEditor.setDecorations(decorationErrorProof, []);
+							currentEditor.setDecorations(decorationProcessingProof, []);
+							currentEditor.setDecorations(decorationProcessedProof, [new vscode.Range(startDocumentPosition, endProofPosition)]);
+							// Update positions
+							lastProcessedPointProofPosition = endProofPosition;
+							waitingForProofProcessing = false;
+						}
+					}
+				} else if (objRcvd.method === "vsquirrel/lsperror" && proofPanel !== undefined) {
+					vscode.window.showErrorMessage(`VSquirrel LSP Error: ${objRcvd.data}`);
 				}
 			}
 			console.log(`==stdout==\n${data}\n==end stdout==`);
@@ -167,6 +212,7 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	if (lsp_server.stderr !== null) {
 		lsp_server.stderr.on('data', (data : string) => {
+			vscode.window.showErrorMessage(`VSquirrel LSP server error message: ${data}`);
 			console.error(`==stderr==\n${data}\n==end stderr==`);
 		});
 	} else {
@@ -175,58 +221,70 @@ export function activate(context: vscode.ExtensionContext) {
 
 	lsp_server.on('close', (code : number, signal : string) => {
 		if (signal !== null) {
+			vscode.window.showErrorMessage(`VSquirrel: LSP server exited with code ${code} and signal ${signal}`);
 			console.log(`LSP server exited with code ${code} and signal ${signal}`);
 		} else {
+			vscode.window.showErrorMessage(`VSquirrel: LSP server exited with code ${code}`);
 			console.log(`LSP server exited with code ${code}`);
 		}
 	});
 
 	lsp_server.on('error', (err : Error) => {
+		vscode.window.showErrorMessage(`VSquirrel: LSP server error: ${err}`);
 		console.error(`LSP server error: ${err}`);
 	});
-
-	// Decorations
-	var processedProofColor = "#00f04857";
-	var testDeco = vscode.window.createTextEditorDecorationType({backgroundColor : processedProofColor});
 
 	// For debugging, kill LSP server
 	const killServer = vscode.commands.registerCommand('vsquirrel.killServer', () => {
 		lsp_server.kill();
 	});
 
+	// Command to start a proof on a given file (TODO for now, it is actually agnostic to the files).
+	// TODO authorize to use nextProof, etc only on file where the proof was started.
 	const startProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.startProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
-			// Setting position of last processed point in the proof at the beginning of the file.
-			endProofPosition = new vscode.Position(0, 0);
-			// Sending path to squirrel to the LSP server
-			LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath}, true);
-			// Creating panel where the goals are displayed
-			proofPanel = vscode.window.createWebviewPanel(
-				"squirrel-prover-proof",
-				`Squirrel ${textEditor.document.fileName}`,
-				{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
-			);
+			if (!(endProofPosition === undefined && lastProcessedPointProofPosition === undefined)) {
+				vscode.window.showErrorMessage("VSquirrel: Proof already started.");
+			} else {
+				// Setting position of last processed point in the proof at the beginning of the file.
+				endProofPosition = new vscode.Position(0, 0);
+				lastProcessedPointProofPosition = new vscode.Position(0, 0);
+				waitingForProofProcessing = false;
+				// Sending path to squirrel to the LSP server
+				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath}, true);
+				// Creating panel where the goals are displayed
+				proofPanel = vscode.window.createWebviewPanel(
+					"squirrel-prover-proof",
+					`Squirrel ${textEditor.document.fileName}`,
+					{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
+				);
+			}
 		}
 	);
 	
 	// Process proof until next [.]
 	const nextProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.nextProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
-			if (endProofPosition === undefined) {
-				vscode.window.showErrorMessage("You must first start the proof.");
+			if (endProofPosition === undefined || lastProcessedPointProofPosition === undefined) {
+				vscode.window.showErrorMessage("VSquirrel: You must first start the proof.");
+			} else if (waitingForProofProcessing) {
+				// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
+				vscode.window.showErrorMessage("VSquirrel: Wait for last commant to be processed.");
 			} else {
-				const nextDotPosition : vscode.Position | undefined = findNextDot(textEditor.document, endProofPosition);
+				const nextDotPosition : vscode.Position | undefined = findNextDot(textEditor.document, lastProcessedPointProofPosition);
 				if (nextDotPosition === undefined) {
-					vscode.window.showErrorMessage("No dot to get the proof to in the remaining of the document.");
+					vscode.window.showErrorMessage("VSquirrel: No dot to get the proof to in the remaining of the document.");
 				} else {
+					// Make [textEditor] available to event function of LSP server's subprocess
+					currentEditor = textEditor;
 					// Send proof to process to LSP server
-					const bufferProof = textEditor.document.getText(new vscode.Range(endProofPosition, nextDotPosition));
+					const bufferProof = textEditor.document.getText(new vscode.Range(lastProcessedPointProofPosition, nextDotPosition));
 					LSPSend({method:"vsquirrel/nextProof", proofCommand: bufferProof}, true);
-					// Update highlighting of processed proof
-					textEditor.selection = new vscode.Selection(nextDotPosition, nextDotPosition);
-					textEditor.setDecorations(testDeco, [new vscode.Range(startDocumentPosition, nextDotPosition)]);
 					// Update last processed point in the proof
 					endProofPosition = new vscode.Position(nextDotPosition.line, nextDotPosition.character);
+					// Update highlighting of proof in process
+					textEditor.selection = new vscode.Selection(nextDotPosition, nextDotPosition);
+					textEditor.setDecorations(decorationProcessingProof, [new vscode.Range(lastProcessedPointProofPosition, endProofPosition)]);
 				}
 			}
 		}
