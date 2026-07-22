@@ -478,8 +478,9 @@ export function activate(context: vscode.ExtensionContext) {
 					LSPSend({method:"vsquirrel/nextProof", proofCommand: bufferProof}, true);
 					// Update last processed point in the proof
 					updateEndProofPosition(new vscode.Position(nextDotPosition.line, nextDotPosition.character));
-					// Update highlighting of proof in process
+					// Move cursor to the end of processing proof
 					textEditor.selection = new vscode.Selection(nextDotPosition, nextDotPosition);
+					// Update highlighting of proof in process
 					updateProofDecorations(new vscode.Range(lastProcessedPointProofPosition, endProofPosition), undefined, undefined);
 				}
 			}
@@ -508,6 +509,8 @@ export function activate(context: vscode.ExtensionContext) {
 					} else {
 						undoEndProofPosition();
 					}
+					// Move cursor to new end of proof
+					textEditor.selection = new vscode.Selection(endProofPosition, endProofPosition);
 					// Update highlighting of proof in process
 					undoProcessedDecoration();
 				}
@@ -518,6 +521,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Process commands up to the first dot preceding current cursor's position.
 	const goToProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.goToProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
+			// BEWARE squirrel's output is weird if in a single prompt there are several dots.
 			if (endProofPosition === undefined || lastProcessedPointProofPosition === undefined) {
 				vscode.window.showErrorMessage("VSquirrel: You must first start the proof.");
 			} else if (waitingForProofProcessing) {
