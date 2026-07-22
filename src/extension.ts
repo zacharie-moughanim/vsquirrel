@@ -103,7 +103,22 @@ function LSPRecvStdout(data : string) : void {
 			}
 		}
 	}
+}
 
+/** Manage [data] received on stderr, if [data] represent a single JSON object. */
+function LSPRecvStderr(data : string) : void {
+	const objRcvd = JSON.parse(data);
+	if (Object.hasOwn(objRcvd, "method")) {
+		if (objRcvd.method === "vsquirrel/lsperror") {
+			vscode.window.showWarningMessage(`VSquirrel LSP error message: ${objRcvd.data}`);
+		} else if (objRcvd.method === "vsquirrel/debug") {
+			vscode.window.showInformationMessage(`VSquirrel LSP Error message: ${objRcvd.data}`);
+		} else {
+			vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+		}
+	} else {
+		vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+	}
 }
 
 /// Receives data from LSP server TODO
@@ -148,22 +163,42 @@ var proofStateMain : string;
 var proofStateErrors : string | undefined = undefined; // Must be reset to [undefined] at each new command.
 /// Returns proof states in an HTML page, adapted to display in a webview.
 function updateProofStateInWebview(panel : vscode.WebviewPanel) : void {
-	var HTMLProofStateErrors = "";
+	let HTMLProofStateErrors = "";
+	let errorStyle = "";
+	// panel.webview.options.
+	const mainStyle = `#main {
+		border-bottom: .5em solid;
+		height: 50%;
+		overflow: scroll;
+	}`;
 	if (proofStateErrors !== undefined) {
-		HTMLProofStateErrors = `<p id="errors"> ${proofStateErrors} </p>`;
+		HTMLProofStateErrors = `<div id="errors"> ${proofStateErrors} </div>`;
+		errorStyle = `#error {
+		height: 50%;
+			overflow: scroll;
+		}`;	
 	}
 	panel.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<style>
+		${mainStyle}
+		${errorStyle}
+		#column {
+			height: 100vh;
+		}
+		</style>
     <title>Squirrel Proof</title>
 </head>
 <body>
-    <p id="main">
+	<div id="column">
+		<div id="main" height=50%>
 			${proofStateMain}
-		</p>
+		</div>
 		${HTMLProofStateErrors}
+	</div>
 </body>
 </html>`;
 }
@@ -270,19 +305,38 @@ export function activate(context: vscode.ExtensionContext) {
 	if (lsp_server.stderr !== null) {
 		lsp_server.stderr.setEncoding("utf8");
 		lsp_server.stderr.on('data', (data : string) => {
-			// TODO read bit by bit as is already done for stdout.
+			buf_stderr += data;
 			console.error(`==stderr==\n${data}\n==end stderr==`);
-			const objRcvd = JSON.parse(data);
-			if (Object.hasOwn(objRcvd, "method")) {
-				if (objRcvd.method === "vsquirrel/lsperror") {
-					vscode.window.showWarningMessage(`VSquirrel LSP error message: ${objRcvd.data}`);
-				} else if (objRcvd.method === "vsquirrel/debug") {
-					vscode.window.showInformationMessage(`VSquirrel LSP Error message: ${objRcvd.data}`);
-				} else {
-					vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+			debugChannel.appendLine(data); // .toString() not sure it's useful...
+			// Parsing buffer. It may contain several chunks of the form HEADER\r\nAJSONOBJECT. We read all such chunks and pass them to LSPRecvStdout
+			let stillDataToParse : boolean = true;
+			while (stillDataToParse) {
+				stillDataToParse = false;
+				let contentLength : number | undefined = undefined;
+				const contentlengthFieldTitle = "Content-Length:";
+				const lines_stderr = buf_stderr.split("\n");
+				let readingHeader : boolean = true;
+				let i = 0;
+				for (i = 0; i < lines_stderr.length && readingHeader; ++i) {
+					let line = lines_stderr[i];
+					if (line.trim() === "") {
+						readingHeader = false;
+					}
+					if(line.substring(0, contentlengthFieldTitle.length).toLowerCase() === contentlengthFieldTitle.toLowerCase()) {
+						const splitLine = line.split(":");
+						if (splitLine.length >= 2) { // Otherwise, we wait for more output from LSP server
+							contentLength = parseInt(splitLine[1]);
+						}
+					}
 				}
-			} else {
-				vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+				if (contentLength !== undefined) {
+					const rest : string = lines_stderr.filter((v, j) => j >= i).join("\n");
+					if (rest.length >= contentLength) {
+						stillDataToParse = true;
+						LSPRecvStderr(rest.substring(0, contentLength));
+						buf_stderr = rest.substring(contentLength);
+					}
+				}
 			}
 		});
 	} else {
@@ -327,6 +381,13 @@ export function activate(context: vscode.ExtensionContext) {
 					"squirrel-prover-proof",
 					`Squirrel ${textEditor.document.fileName}`,
 					{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
+				);
+				proofPanel.onDidDispose(
+					() => {
+						console.error("TODO: Not implemented, should reset proof state");
+					},
+					null,
+					context.subscriptions
 				);
 			}
 		}
