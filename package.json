@@ -21,6 +21,11 @@
   "contributes": {
     "commands": [
       {
+        "command": "vsquirrel.startProof",
+        "title": "Start Proof",
+        "icon": "$(debug-start)"
+      },
+      {
         "command": "vsquirrel.killServer",
         "title": "Kill LSP server"
       },
@@ -29,11 +34,18 @@
         "title": "Proof Next Point"
       },
       {
-        "command": "vsquirrel.startProof",
-        "title": "Start Proof",
-        "icon": "$(debug-start)"
+        "command": "vsquirrel.undoProof",
+        "title": "Undo last proof command"
       }
     ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "when": "resourceLangId == squirrel-prover && editorTextFocus",
+          "command": "vsquirrel.startProof"
+        }
+      ]
+    },
     "configuration": {
       "title": "Squirrel Prover",
       "type": "object",
@@ -69,19 +81,17 @@
         }
       }
     ],
-    "menus": {
-      "editor/title/run": [
-        {
-          "when": "resourceLangId == squirrel-prover && editorTextFocus",
-          "command": "vsquirrel.startProof"
-        }
-      ]
-    },
     "keybindings": [
       {
         "command": "vsquirrel.nextProof",
         "key": "alt+down",
         "mac": "ctrl+alt+down",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+      },
+      {
+        "command": "vsquirrel.undoProof",
+        "key": "alt+up",
+        "mac": "ctrl+alt+up",
         "when": "resourceLangId == squirrel-prover && editorTextFocus"
       }
     ]
