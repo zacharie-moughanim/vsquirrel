@@ -26,6 +26,11 @@
         "icon": "$(debug-start)"
       },
       {
+        "command": "vsquirrel.closeProof",
+        "title": "Close proof",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "vsquirrel.killServer",
         "title": "Kill LSP server"
       },
@@ -39,10 +44,16 @@
       }
     ],
     "menus": {
-      "editor/title/run": [
+      "editor/title": [
         {
           "when": "resourceLangId == squirrel-prover && editorTextFocus",
-          "command": "vsquirrel.startProof"
+          "command": "vsquirrel.closeProof",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == squirrel-prover && editorTextFocus",
+          "command": "vsquirrel.startProof",
+          "group": "navigation"
         }
       ]
     },

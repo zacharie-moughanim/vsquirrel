@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { ChildProcess } from 'child_process';
 import { text } from 'stream/consumers';
+import { start } from 'repl';
 
 const { spawn } = require('node:child_process');
 const net = require('node:net');
@@ -42,12 +43,18 @@ var processedProofColor = "#00f04857";
 var processedErrorProofColor = "#f0000057";
 
 class SquirrelDocumentProofState {
-	// Editor
+	// Panels: editor & proof panel
 	editor : vscode.TextEditor;
+	proofPanel : vscode.WebviewPanel;
+	// Global state maintaining what's to be displayed on the proof panel.
+	proofStateMain : string;
+	proofStateErrors : string | undefined; // Must be reset to [undefined] at each new command.
 	// Positions
 	endProofPosition : vscode.Position;
 	endProofPositionHistoric : vscode.Position[];
 	lastProcessedProofPosition : vscode.Position;
+	lastProcessingProofPosition : vscode.Position | undefined;
+	lastErrorProofPosition : vscode.Position | undefined;
 	waitingForProofProcessing : boolean;
 	// Decorations
 	decorationProcessingProof : vscode.TextEditorDecorationType;
@@ -55,8 +62,11 @@ class SquirrelDocumentProofState {
 	decorationErrorProof : vscode.TextEditorDecorationType;
 	processedRangeHistoric : (vscode.Range | null)[];
 
+	closing : boolean;
+
 	constructor(
 		editor : vscode.TextEditor,
+		proofPanel : vscode.WebviewPanel,
 		endPos : vscode.Position = new vscode.Position(0, 0),
 		lastProcessedPos = new vscode.Position(0, 0),
 		waitingForProofProcessing = false,
@@ -66,6 +76,11 @@ class SquirrelDocumentProofState {
 		processedRangeHistoric : (vscode.Range | null)[] = []
 	) {
 		this.editor = editor;
+		this.proofPanel = proofPanel;
+
+		this.proofStateMain = "";
+		this.proofStateErrors = undefined;
+
 		this.endProofPosition = endPos;
 		this.lastProcessedProofPosition = endPos;
 		this.endProofPosition = lastProcessedPos;
@@ -76,6 +91,8 @@ class SquirrelDocumentProofState {
 		this.decorationProcessedProof = decorationProcessedProof;
 		this.decorationErrorProof = decorationErrorProof;
 		this.processedRangeHistoric = processedRangeHistoric;
+
+		this.closing = false;
 	}
 
 	public updateEndProofPosition(pos : vscode.Position) {
@@ -105,8 +122,10 @@ class SquirrelDocumentProofState {
 	public updateProofDecorations(processingRange : vscode.Range | undefined | null, processedRange : vscode.Range | undefined | null, errorRange : vscode.Range | undefined | null) {
 		if (processingRange !== undefined) {
 			let ranges : vscode.Range[] = [];
+			this.lastProcessingProofPosition = undefined;
 			if (processingRange !== null) {
 				ranges = [processingRange];
+				this.lastProcessingProofPosition = processingRange.end;
 			}
 			this.editor.setDecorations(this.decorationProcessingProof, ranges);
 		}
@@ -120,10 +139,24 @@ class SquirrelDocumentProofState {
 		}
 		if (errorRange !== undefined) {
 			let ranges : vscode.Range[] = [];
+			this.lastErrorProofPosition = undefined;
 			if (errorRange !== null) {
 				ranges = [errorRange];
+				this.lastErrorProofPosition = errorRange.end;
 			}
 			this.editor.setDecorations(this.decorationErrorProof, ranges);
+		}
+	}
+
+	public refreshHighlights() {
+		vscode.window.showInformationMessage(`start pos: l.${startDocumentPosition.line} c.${startDocumentPosition.character}\nlast pos: l.${this.lastProcessedProofPosition.line} c.${this.lastProcessedProofPosition.character}`);
+		this.editor.setDecorations(this.decorationProcessedProof, [new vscode.Range(startDocumentPosition, this.lastProcessedProofPosition)]);
+		vscode.window.showInformationMessage("DONE!");
+		if (this.lastProcessingProofPosition !== undefined) {
+			this.editor.setDecorations(this.decorationProcessingProof, [new vscode.Range(this.lastProcessedProofPosition, this.lastProcessingProofPosition)]);
+		}
+		if (this.lastErrorProofPosition !== undefined) {
+			this.editor.setDecorations(this.decorationErrorProof, [new vscode.Range(this.lastProcessedProofPosition, this.lastErrorProofPosition)]);
 		}
 	}
 
@@ -145,6 +178,49 @@ class SquirrelDocumentProofState {
 			}
 		}
 	}
+
+	/// Returns proof states in an HTML page, adapted to display in a webview.
+	public updateProofStateInWebview() : void {
+		let HTMLProofStateErrors = "";
+		let errorStyle = "";
+		// panel.webview.options.
+		const mainStyle = `#main {
+			border-bottom: .5em solid;
+			height: 50%;
+			overflow: scroll;
+		}`;
+		if (this.proofStateErrors !== undefined) {
+			HTMLProofStateErrors = `<div id="errors"> ${this.proofStateErrors} </div>`;
+			errorStyle = `#error {
+			height: 50%;
+				overflow: scroll;
+			}`;	
+		}
+		this.proofPanel.webview.html = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<style>
+			${mainStyle}
+			${errorStyle}
+			#column {
+				height: 100vh;
+			}
+			</style>
+			<title>Squirrel Proof</title>
+	</head>
+	<body>
+		<div id="column">
+			<div id="main">
+				${this.proofStateMain}
+			</div>
+			${HTMLProofStateErrors}
+		</div>
+	</body>
+	</html>`;
+	}
+
 }
 
 var proofStates : Map<string, SquirrelDocumentProofState> = new Map();
@@ -181,30 +257,34 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 function LSPRecvStdout(data : string) : void {
 	const objRcvd = JSON.parse(data);
 	if (Object.hasOwn(objRcvd, "method")) {
-		if (objRcvd.method === "vsquirrel/squirrelProofOutput" && proofPanel !== undefined) {
-			// Display proof state/message from squirrel on proof panel
-			if(objRcvd.kind === "error") {
-				// Display error messages from squirrel on proof panel
-				proofStateErrors = squirrelAsHTML(objRcvd.payload);
-				updateProofStateInWebview(proofPanel);
-				// Highlight the command that triggered the error
-				// TODO actually look for specific document
-				if (/* TODO */proofStates.size !== 0) {
-					for (let [name, proofState] of proofStates) {
-						proofState.updateProofDecorations(undefined, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
-					}
-				}
+		if (objRcvd.method === "vsquirrel/squirrelProofOutput") {
+			if(!(Object.hasOwn(objRcvd, "kind"))) {
+				vscode.window.showErrorMessage("Received LSP message without excepted field [kind].");
 			} else {
-				proofStateErrors = undefined;
-				proofStateMain = squirrelAsHTML(objRcvd.payload);
-				updateProofStateInWebview(proofPanel);
-				if (/* TODO */proofStates.size !== 0) {
-					for (let [name, proofState] of proofStates) {
-						// Remove previous processing highlighting and error highlighting, if any and highlight the command that was just processed
-						proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);
-						// Update positions
-						proofState.lastProcessedProofPosition = proofState.endProofPosition;
-						proofState.waitingForProofProcessing = false;
+				if(!(Object.hasOwn(objRcvd, "documentId"))) {
+					vscode.window.showErrorMessage("Received LSP message without excepted field [kind].");
+				} else {
+					let proofState = proofStates.get(objRcvd.documentId);
+					if (proofState === undefined) {
+						vscode.window.showErrorMessage("Panic: LSP server mentions a closed or nonexitstent file.");
+					} else {
+						if(objRcvd.kind === "error") {
+							// Highlight the command that triggered the error
+							// TODO actually look for specific document
+							proofState.updateProofDecorations(undefined, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
+							// Display error messages from squirrel on proof panel
+							proofState.proofStateErrors = squirrelAsHTML(objRcvd.payload);
+							proofState.updateProofStateInWebview();
+						} else {
+							proofState.proofStateErrors = undefined;
+							proofState.proofStateMain = squirrelAsHTML(objRcvd.payload);
+							proofState.updateProofStateInWebview();
+							// Remove previous processing highlighting and error highlighting, if any and highlight the command that was just processed
+							proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);
+							// Update positions
+							proofState.lastProcessedProofPosition = proofState.endProofPosition;
+							proofState.waitingForProofProcessing = false;
+						}
 					}
 				}
 			}
@@ -251,54 +331,6 @@ function squirrelAsHTML(body : string) : string {
 	return convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>");
 }
 
-// Global state maintaining what's to be displayed on the proof panel.
-var proofStateMain : string;
-var proofStateErrors : string | undefined = undefined; // Must be reset to [undefined] at each new command.
-/// Returns proof states in an HTML page, adapted to display in a webview.
-function updateProofStateInWebview(panel : vscode.WebviewPanel) : void {
-	let HTMLProofStateErrors = "";
-	let errorStyle = "";
-	// panel.webview.options.
-	const mainStyle = `#main {
-		border-bottom: .5em solid;
-		height: 50%;
-		overflow: scroll;
-	}`;
-	if (proofStateErrors !== undefined) {
-		HTMLProofStateErrors = `<div id="errors"> ${proofStateErrors} </div>`;
-		errorStyle = `#error {
-		height: 50%;
-			overflow: scroll;
-		}`;	
-	}
-	panel.webview.html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<style>
-		${mainStyle}
-		${errorStyle}
-		#column {
-			height: 100vh;
-		}
-		</style>
-    <title>Squirrel Proof</title>
-</head>
-<body>
-	<div id="column">
-		<div id="main" height=50%>
-			${proofStateMain}
-		</div>
-		${HTMLProofStateErrors}
-	</div>
-</body>
-</html>`;
-}
-
-// Side panel. [undefined] means the proof panel does not exist at the time.
-var proofPanel : vscode.WebviewPanel | undefined = undefined;
-
 /** Find position of next dot in the [doc] from the position [from], ignoring comments e.g. on [(* a sentence. *) Proof.], it returns the position of the second dot. */
 function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode.Position | undefined {
 	var prevChar : string;
@@ -326,6 +358,27 @@ function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode
 		}
 	} while (!(curChar === '.' && !withinComment));
 	return nextPos;
+}
+
+function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
+	// Closing is used to avoir loop in case closeProof --triggers--> dispose webview --triggers--> closeProof ...
+	let proofState = proofStates.get(documentId);
+	if (proofState === undefined) {
+		vscode.window.showErrorMessage("VSquirrel: Proof is not started.");
+	} else if (!proofState.closing) {
+		proofState.closing = true;
+		if (disposeWebviewPanel) {
+			proofState.proofPanel.dispose();
+		}
+		// Removing proof state from client
+		proofStates.delete(documentId);
+		// Removing decorations
+		proofState.decorationErrorProof.dispose();
+		proofState.decorationProcessedProof.dispose();
+		proofState.decorationProcessingProof.dispose();
+		// Telling the server to close proof
+		LSPSend({method:"vsquirrel/closeProof", documentId: documentId}, true);
+	}
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -457,30 +510,57 @@ export function activate(context: vscode.ExtensionContext) {
 		lsp_server.kill();
 	});
 
-	// Command to start a proof on a given file (TODO for now, it is actually agnostic to the files).
+	// Command to start a proof on a given file
 	const startProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.startProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
 			const prevProofState : SquirrelDocumentProofState | undefined = proofStates.get(textEditor.document.fileName);
 			if (prevProofState !== undefined) {
 				vscode.window.showErrorMessage("VSquirrel: Proof already started.");
 			} else {
-				proofStates.set(textEditor.document.fileName, new SquirrelDocumentProofState(textEditor));
-				// Sending path to squirrel to the LSP server
-				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath, file: textEditor.document.fileName}, true);
-				// Creating panel where the goals are displayed
-				proofPanel = vscode.window.createWebviewPanel(
+					// Creating panel where the goals are displayed
+				let proofPanel = vscode.window.createWebviewPanel(
 					"squirrel-prover-proof",
 					`Squirrel ${textEditor.document.fileName}`,
 					{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
 				);
+				// Closing proof when the proof panel is closed
 				proofPanel.onDidDispose(
 					() => {
-						console.error("TODO: Not implemented, should reset proof state");
+						closeProof(textEditor.document.fileName, false);
 					},
 					null,
 					context.subscriptions
 				);
+				vscode.window.onDidChangeActiveTextEditor((activeEditor : vscode.TextEditor | undefined) => {
+					if (activeEditor !== undefined) {
+						let proofState = proofStates.get(activeEditor.document.fileName);
+						if (proofState !== undefined) {
+							proofState.proofPanel.reveal();
+						}
+					}
+ 				});
+				// Update editors registered in [proofState] on tab change, and refresh highlights when a document is made visible again.
+				vscode.window.onDidChangeVisibleTextEditors((editors : readonly vscode.TextEditor[]) => {
+					for (let editor of editors) {
+						let proofState = proofStates.get(editor.document.fileName);
+						if (proofState !== undefined) {
+							proofState.editor = editor;
+							proofState.refreshHighlights();
+						}
+					}
+				});
+				// Adding an entry to proof states for this file and information to the LSP server
+				proofStates.set(textEditor.document.fileName, new SquirrelDocumentProofState(textEditor, proofPanel));
+				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
+
 			}
+		}
+	);
+
+	// Command to close a proof on a given file
+	const closeProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.closeProof',
+		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
+			closeProof(textEditor.document.fileName, true);
 		}
 	);
 	
@@ -500,7 +580,7 @@ export function activate(context: vscode.ExtensionContext) {
 				} else {
 					// Send proof to process to LSP server
 					const bufferProof = textEditor.document.getText(new vscode.Range(proofState.lastProcessedProofPosition, nextDotPosition));
-					LSPSend({method:"vsquirrel/proofCommand", proofCommand: bufferProof}, true);
+					LSPSend({method:"vsquirrel/proofCommand", proofCommand: bufferProof, documentId: textEditor.document.fileName}, true);
 					// Update last processed point in the proof
 					proofState.updateEndProofPosition(new vscode.Position(nextDotPosition.line, nextDotPosition.character));
 					// Move cursor to the end of processing proof, and scroll if needed
@@ -527,7 +607,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage("VSquirrel: No proof command to undo.");
 				} else {
 					// Send proof to process to LSP server
-					LSPSend({method:"vsquirrel/proofCommand", proofCommand: "undo 1."}, true);
+					LSPSend({method:"vsquirrel/proofCommand", proofCommand: "undo 1.", documentId: textEditor.document.fileName}, true);
 					// Update last processed point in the proof
 					if (proofState.endProofPositionHistoric.length === 0) {
 						vscode.window.showErrorMessage("No proof to undo (end position).");
@@ -584,6 +664,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(startProofCmd);
+	context.subscriptions.push(closeProofCmd);
 	context.subscriptions.push(nextProofCmd);
 	context.subscriptions.push(undoProofCmd);
 	context.subscriptions.push(killServer);
