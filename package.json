@@ -51,12 +51,12 @@
       "editor/title": [
         {
           "when": "resourceLangId == squirrel-prover && editorTextFocus",
-          "command": "vsquirrel.closeProof",
+          "command": "vsquirrel.startProof",
           "group": "navigation"
         },
         {
           "when": "resourceLangId == squirrel-prover && editorTextFocus",
-          "command": "vsquirrel.startProof",
+          "command": "vsquirrel.closeProof",
           "group": "navigation"
         }
       ]

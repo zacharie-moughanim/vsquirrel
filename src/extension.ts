@@ -408,7 +408,36 @@ class SquirrelDocumentProofState {
 				targetDotPos = preTargetDotPos;
 			}
 			if (!targetDotPos.isEqual(this.lastProcessedProofPosition)) {
-				vscode.window.showWarningMessage("TODO NOT IMPLEMENTED");
+				let commands : [string, vscode.Position][] = [];
+				let prevChar : string;
+				let curChar : string = "";
+				let lastCommandBeginningPos : vscode.Position = this.lastProcessedProofPosition;
+				let curPos : vscode.Position = this.lastProcessedProofPosition;
+				let nextPos : vscode.Position | undefined;
+				let withinComment : boolean = false;
+				do {
+					nextPos = nextCharacterPosition(this.editor.document, curPos);
+					if (nextPos === undefined) {
+						return undefined;
+					}
+					prevChar = curChar;
+					curChar = this.editor.document.getText(new vscode.Range(curPos, nextPos));
+					curPos = nextPos;
+					if (withinComment) {
+						if (prevChar === "*" && curChar === ")") {
+							withinComment = false;
+						}
+					} else {
+						if (prevChar === "(" && curChar === "*") {
+							withinComment = true;
+						}
+						if (curChar === ".") {
+							commands.push([this.editor.document.getText(new vscode.Range(lastCommandBeginningPos, nextPos)), nextPos]);
+							lastCommandBeginningPos = nextPos;
+						}
+					}
+				} while (nextPos.isBeforeOrEqual(targetDotPos));
+				this.processCommands(commands);
 			}
 		}
 	}
