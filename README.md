@@ -17,6 +17,7 @@ There are two settings necessary for the extension to work:
 
 ## Known Issues
 
+- Only one command can be in processing at a time.
 - Modifying in the processed part of a file must undo until the modified part.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
 - No syntax highlighting + maybe reuse directly squirrel's lexer with semantic highlighting.

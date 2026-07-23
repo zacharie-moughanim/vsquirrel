@@ -41,6 +41,10 @@
       {
         "command": "vsquirrel.undoProof",
         "title": "Undo last proof command"
+      },
+      {
+        "command": "vsquirrel.goToProof",
+        "title": "Interpret to the position of the cursor"
       }
     ],
     "menus": {
@@ -103,6 +107,12 @@
         "command": "vsquirrel.undoProof",
         "key": "alt+up",
         "mac": "ctrl+alt+up",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+      },
+      {
+        "command": "vsquirrel.goToProof",
+        "key": "alt+right",
+        "mac": "ctrl+alt+right",
         "when": "resourceLangId == squirrel-prover && editorTextFocus"
       }
     ]
