@@ -136,8 +136,8 @@ class SquirrelDocumentProofState {
 	editor : vscode.TextEditor;
 	proofPanel : vscode.WebviewPanel;
 	// Global state maintaining what's to be displayed on the proof panel.
-	proofStateMain : string;
-	proofStateErrors : string | undefined; // Must be reset to [undefined] at each new command.
+	proofStateMain : string[];
+	proofStateResponses : [string, string][]; // Must be reset to [undefined] at each new command.
 	// Positions
 	endProofPosition : vscode.Position;
 	endProofPositionHistoric : vscode.Position[];
@@ -167,8 +167,8 @@ class SquirrelDocumentProofState {
 		this.editor = editor;
 		this.proofPanel = proofPanel;
 
-		this.proofStateMain = "";
-		this.proofStateErrors = undefined;
+		this.proofStateMain = [];
+		this.proofStateResponses = [];
 
 		this.endProofPosition = endPos;
 		this.lastProcessedProofPosition = endPos;
@@ -190,7 +190,7 @@ class SquirrelDocumentProofState {
 	}
 
 	public undoEndProofPosition() {
-		if (this.endProofPositionHistoric.length <= 2) {
+		if (this.endProofPositionHistoric.length <= 1) {
 			vscode.window.showErrorMessage("Nothing to undo (position).");
 		} else {
 			this.endProofPositionHistoric.pop();
@@ -270,17 +270,31 @@ class SquirrelDocumentProofState {
 
 	/// Returns proof states in an HTML page, adapted to display in a webview.
 	public updateProofStateInWebview() : void {
-		let HTMLProofStateErrors = "";
-		let errorStyle = "";
+		let HTMLProofStateResponses = "";
+		let HTMLProofMain = "";
+		let responsesStyle = "";
 		// panel.webview.options.
 		const mainStyle = `#main {
 			border-bottom: .5em solid;
 			height: 50%;
 			overflow: scroll;
 		}`;
-		if (this.proofStateErrors !== undefined) {
-			HTMLProofStateErrors = `<div id="errors"> ${this.proofStateErrors} </div>`;
-			errorStyle = `#error {
+		if (this.proofStateResponses.length > 0) {
+			for (let response of this.proofStateResponses) {
+				const kind : string = response[0];
+				const payload : string = response[1];
+				HTMLProofStateResponses += `<p class="${kind}"> ${payload} </p>`;
+			}
+			responsesStyle = `#responses {
+			height: 50%;
+				overflow: scroll;
+			}`;	
+		}
+		if (this.proofStateMain.length > 0) {
+			for (let goalContent of this.proofStateMain) {
+				HTMLProofMain += `<p> ${goalContent} </p>`;
+			}
+			responsesStyle = `#responses {
 			height: 50%;
 				overflow: scroll;
 			}`;	
@@ -292,7 +306,7 @@ class SquirrelDocumentProofState {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
 			<style>
 			${mainStyle}
-			${errorStyle}
+			${responsesStyle}
 			#column {
 				height: 100vh;
 			}
@@ -302,9 +316,11 @@ class SquirrelDocumentProofState {
 	<body>
 		<div id="column">
 			<div id="main">
-				${this.proofStateMain}
+				${HTMLProofMain}
 			</div>
-			${HTMLProofStateErrors}
+			<div id="responses">
+				${HTMLProofStateResponses}
+			</div>
 		</div>
 	</body>
 	</html>`;
@@ -325,7 +341,6 @@ class SquirrelDocumentProofState {
 					lastPos = new vscode.Position(0, 0);
 					console.error("Panic.");
 				}
-				this.updateEndProofPosition(lastPos);
 				// Move cursor to the end of processing proof, and scroll if needed
 				this.editor.selection = new vscode.Selection(lastPos, lastPos);
 				this.editor.revealRange(new vscode.Range(lastPos, lastPos));
@@ -334,6 +349,7 @@ class SquirrelDocumentProofState {
 				for (let [cmd, pos] of commands) {
 					this.waitingForProofProcessing = true;
 					LSPSend({method:"vsquirrel/proofCommand", proofCommand: cmd, documentId: this.editor.document.fileName}, true);
+					this.updateEndProofPosition(pos);
 				}
 			}
 		}
@@ -356,7 +372,6 @@ class SquirrelDocumentProofState {
 
 	private undoCommands(n : number = 1, moveCursor : boolean = true) {
 		this.waitingForProofProcessing = true;
-		// Send proof to process to LSP server
 		LSPSend({method:"vsquirrel/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName}, true);
 		// Update last processed point in the proof
 		for (let i = 0; i < n; ++i) {
@@ -481,24 +496,37 @@ function LSPRecvStdout(data : string) : void {
 					if (proofState === undefined) {
 						vscode.window.showErrorMessage("Panic: LSP server mentions a closed or nonexistent file.");
 					} else {
-						if(objRcvd.kind === "error") {
-							// Highlight the command that triggered the error
-							proofState.updateProofDecorations(undefined, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
-							// Display error messages from squirrel on proof panel
-							proofState.proofStateErrors = squirrelAsHTML(objRcvd.payload);
-							proofState.updateProofStateInWebview();
-							proofState.waitingForProofProcessing = false;
-						} else {
+						if (Object.hasOwn(objRcvd, "resetResponses")) {
+							proofState.proofStateMain = [];
+							proofState.proofStateResponses = [];
+						}
+						if (objRcvd.kind === "goal") {
 							proofState.lastProcessingProofPosition = proofState.endProofPosition;
-							proofState.proofStateErrors = undefined;
-							proofState.proofStateMain = squirrelAsHTML(objRcvd.payload);
-							proofState.updateProofStateInWebview();
-							// Remove previous processing highlighting and error highlighting, if any and highlight the command that was just processed
-							proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);
-							// Update positions
-							proofState.lastProcessedProofPosition = proofState.endProofPosition;
+							proofState.proofStateResponses = [];
+							proofState.proofStateMain.push(squirrelAsHTML(objRcvd.payload));
+							if (!(Object.hasOwn(objRcvd, "continuing"))) {
+								proofState.updateProofStateInWebview();
+								// Remove previous processing highlighting and error highlighting, if any and highlight the command that was just processed
+								proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);
+								// Update positions
+								proofState.lastProcessedProofPosition = proofState.endProofPosition;
+								proofState.waitingForProofProcessing = false;
+							}
+						} else {
+							// Display error messages from squirrel on proof panel
+							proofState.proofStateResponses.push([objRcvd.kind, squirrelAsHTML(objRcvd.payload)]);
+							if (!(Object.hasOwn(objRcvd, "continuing"))) {
+								if (Object.hasOwn(objRcvd, "commandFailed")) {
+									// Highlight the command that triggered the error
+									proofState.updateProofDecorations(undefined, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
+									proofState.updateProofStateInWebview();
+								} else {
+									proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);
+									proofState.lastProcessedProofPosition = proofState.endProofPosition;
+									proofState.updateProofStateInWebview();
+								}
+							}
 							proofState.waitingForProofProcessing = false;
-							
 						}
 					}
 				}
@@ -635,8 +663,7 @@ export function activate(context: vscode.ExtensionContext) {
 					let line = lines_stdout[i];
 					if (line.trim() === "") {
 						readingHeader = false;
-					}
-					if(line.substring(0, contentlengthFieldTitle.length).toLowerCase() === contentlengthFieldTitle.toLowerCase()) {
+					} else if(line.substring(0, contentlengthFieldTitle.length).toLowerCase() === contentlengthFieldTitle.toLowerCase()) {
 						const splitLine = line.split(":");
 						if (splitLine.length >= 2) { // Otherwise, we wait for more output from LSP server
 							contentLength = parseInt(splitLine[1]);
@@ -644,6 +671,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				}
 				if (contentLength !== undefined) {
+					// Reconstituting the payload
 					const rest : string = lines_stdout.filter((v, j) => j >= i).join("\n");
 					if (rest.length >= contentLength) {
 						stillDataToParse = true;
