@@ -270,10 +270,35 @@ class SquirrelDocumentProofState {
 
 	/// Returns proof states in an HTML page, adapted to display in a webview.
 	public updateProofStateInWebview() : void {
-		let HTMLProofStateResponses = "";
-		let HTMLProofMain = "";
-		let responsesStyle = "";
-		// panel.webview.options.
+		let HTMLProofStateResponses : string = "";
+		let HTMLProofMain : string = "";
+		let CSSColorStart : string;
+		let CSSColorWarning : string;
+		let CSSColorError : string;
+		if (vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast) {
+			CSSColorStart = "#a8fcff"; // TODO see if we can instead use vscode.THemeColor
+			CSSColorWarning = "#ffe605";
+			CSSColorError = "#f00000";
+		} else {
+			CSSColorStart = "#135dff";
+			CSSColorWarning = "#ff9100";
+			CSSColorError = "#f00000";
+		}
+		let responsesStyle : string = `#responses {
+		height: 50%;
+			overflow: scroll;
+		}
+		.start {
+			color: ${CSSColorStart};
+		}
+		.warning {
+			color: ${CSSColorWarning};
+		}
+		.error {
+			${CSSColorError}
+		}
+		
+		`;	
 		const mainStyle = `#main {
 			border-bottom: .5em solid;
 			height: 50%;
@@ -285,10 +310,6 @@ class SquirrelDocumentProofState {
 				const payload : string = response[1];
 				HTMLProofStateResponses += `<p class="${kind}"> ${payload} </p>`;
 			}
-			responsesStyle = `#responses {
-			height: 50%;
-				overflow: scroll;
-			}`;	
 		}
 		if (this.proofStateMain.length > 0) {
 			for (let goalContent of this.proofStateMain) {

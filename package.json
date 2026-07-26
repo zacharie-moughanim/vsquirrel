@@ -61,8 +61,28 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "vsquirrel.nextProof",
+        "key": "alt+down",
+        "mac": "ctrl+alt+down",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+      },
+      {
+        "command": "vsquirrel.undoProof",
+        "key": "alt+up",
+        "mac": "ctrl+alt+up",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+      },
+      {
+        "command": "vsquirrel.goToProof",
+        "key": "alt+right",
+        "mac": "ctrl+alt+right",
+        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+      }
+    ],
     "configuration": {
-      "title": "Squirrel Prover",
+      "title": "VSquirrel Prover",
       "type": "object",
       "properties": {
         "SquirrelProver.lsp.pythonInterpreterPath": {
@@ -76,6 +96,12 @@
           "markdownDescription": "Path to squirrel. default:~/squirrel-prover/squirrel",
           "default": "~/squirrel-prover/squirrel",
           "order": 1
+        },
+        "SquirrelProver.errorHighlightColor": {
+          "type": "color",
+          "markdownDescription": "Color in which commands triggering errors are highlighted in the editor.",
+          "default": "#f00000",
+          "order": 2
         }
       }
     },
@@ -96,24 +122,11 @@
         }
       }
     ],
-    "keybindings": [
+    "grammars": [
       {
-        "command": "vsquirrel.nextProof",
-        "key": "alt+down",
-        "mac": "ctrl+alt+down",
-        "when": "resourceLangId == squirrel-prover && editorTextFocus"
-      },
-      {
-        "command": "vsquirrel.undoProof",
-        "key": "alt+up",
-        "mac": "ctrl+alt+up",
-        "when": "resourceLangId == squirrel-prover && editorTextFocus"
-      },
-      {
-        "command": "vsquirrel.goToProof",
-        "key": "alt+right",
-        "mac": "ctrl+alt+right",
-        "when": "resourceLangId == squirrel-prover && editorTextFocus"
+        "language": "squirrel-prover",
+        "scopeName": "source.squirrel-prover",
+        "path": "./syntax/squirrel-prover.tmGrammar.json"
       }
     ]
   },

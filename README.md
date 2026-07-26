@@ -17,6 +17,7 @@ There are two settings necessary for the extension to work:
 
 ## Known Issues
 
+- Colors are hard-coded (with variant for dark/light theme).
 - At least regarding highlighting, interpretedToPosition can have an unexpected behavior. 
 - Only one command can be in processing at a time.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.

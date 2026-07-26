@@ -1,0 +1,277 @@
+{
+  "scopeName": "source.squirrel-prover",
+  "patterns": [{ "include": "#expression" }],
+  "repository": {
+    "expression": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#naturals" },
+        { "include": "#formula_kinds" },
+        { "include": "#bang_operator" },
+        { "include": "#system_projections" },
+        { "include": "#system_annotation_keywords" },
+        { "include": "#system_tag" },
+        { "include": "#system_context_keywords" },
+        { "include": "#macros" },
+        { "include": "#declaration_lemma_keywords" },
+        { "include": "#declaration_general_keyword" },
+        { "include": "#declaration_crypto_keywords" },
+        { "include": "#declaration_process_keywords" },
+        { "include": "#declaration_system_keywords" },
+        { "include": "#control_flow_keywords" },
+        { "include": "#module_inclusion"},
+        { "include": "#other_keyword" },
+        { "include": "#boolean_literal" },
+        { "include": "#message_literal" },
+        { "include": "#macro_application_operator" },
+        { "include": "#process_null" },
+        { "include": "#process_prefix_keywords" },
+        { "include": "#term_diff" },
+        { "include": "#term_try_find_keywords" },
+        { "include": "#term_fun_keyword" },
+        { "include": "#term_projection" },
+        { "include": "#term_infix_builtin_operators" },
+        { "include": "#term_infix_left_operators" },
+        { "include": "#term_infix_right_operators" },
+        { "include": "#logic_local_quantifiers" },
+        { "include": "#logic_local_unary_operators" },
+        { "include": "#logic_global_quantifiers" },
+        { "include": "#logic_global_unary_operators" },
+        { "include": "#logic_global_operators" },
+        { "include": "#operators" },
+        { "include": "#type_operators" },
+        { "include": "#base_types" },
+        { "include": "#type_tags" },
+        { "include": "#type_variables" },
+        { "include": "#variable_tags" },
+        { "include": "#wildcard" },
+        { "include": "#identifier" },
+        { "include": "#Identifier" },
+        { "include": "#period" },
+        { "include": "#semicolon" },
+        { "include": "#colon" },
+        { "include": "#slash" },
+        { "include": "#comma"},
+        { "include": "#pair_expression" },
+        { "include": "#paren_expression" }
+      ]
+    },
+    "comments": {
+      "begin": "\\(\\*",
+      "end": "\\*\\)",
+      "name": "comment.block.squirrel-prover"
+    },
+    "naturals": {
+      "match": "[0-9]+",
+      "name": "constant.numeric.integer.squirrel-prover"
+    },
+    "formula_kinds": {
+      "match": "(local|global)\\b",
+      "name": "keyword.formulaKind.squirrel-prover"
+    },
+    "system_projections": {
+      "match": "(left|right)\\b",
+      "name": "constant.systemSide.squirrel-prover"
+    },
+    "system_annotation_keywords": {
+      "match": "any\\b",
+      "name": "keyword.systemAnnotation.squirrel-prover"
+    },
+    "system_tag": {
+      "match": "pair\\b",
+      "name": "constant.language.systemTag.squirrel-prover"
+    },
+    "system_context_keywords": {
+      "match": "(set|equiv)\\b",
+      "name": "keyword.systemContext.squirrel-prover"
+    },
+    "macros": {
+      "match": "(output|cond|input|frame|exec)\\b",
+      "name": "keyword.macro.squirrel-prover"
+    },
+    "declaration_lemma_keywords": {
+      "match": "(lemma|theorem|axiom)\\b",
+      "name": "keyword.declaration.lemma.squirrel-prover"
+    },
+    "declaration_general_keyword": {
+      "match": "(type|name|abstract|op|where)\\b",
+      "name": "keyword.declaration.squirrel-prover"
+    },
+    "declaration_crypto_keywords": {
+      "match": "(hash|signature|aenc|senc|cdh|gdh|ddh|where)\\b",
+      "name": "keyword.declaration.cryptoFunction.squirrel-prover"
+    },
+    "declaration_process_keywords": {
+      "match": "(channel|mutable|process)\\b",
+      "name": "keyword.declaration.process.squirrel-prover"
+    },
+    "declaration_system_keywords": {
+      "match": "system\\b",
+      "name": "keyword.declaration.process.squirrel-prover"
+    },
+    "other_keyword": {
+      "match": "(let|in)\\b",
+      "name": "keyword.control.termConstructor.declaration.squirrel-prover"
+    },
+    "control_flow_keywords": {
+      "match": "(if|then|else)\\b",
+      "name": "keyword.control.termConstructor.ifthenelse.squirrel-prover"
+    },
+    "module_inclusion": {
+      "match": "include\\b",
+      "name": "keyword.other.squirrel-prover"
+    },
+    "comma": {
+      "match": ",",
+      "name": "punctuation.separator.comma punctuation.comma"
+    },
+    "boolean_literal": {
+      "match": "(true|false)\\b",
+      "name": "constant.numeric.boolean.tml"
+    },
+    "message_literal": {
+      "match": "(fail|empty)\\b",
+      "name": "constant.numeric.message.tml"
+    },
+    "process_prefix_keywords": {
+      "match": "(new|out|in)\\b",
+      "name": "keyword.control.processConstructor.prefix.squirrel-prover"
+    },
+    "bang_operator": {
+      "match": "!_",
+      "name": "keyword.operator.bang.squirrel-prover"
+    },
+    "process_null": {
+      "match": "null\\b",
+      "name": "keyword.constant.numeric.nullProcess.squirrel-prover"
+    },
+    "term_diff": {
+      "match": "diff\\b",
+      "name": "keyword.control.termConstructor.diff.squirrel-prover"
+    },
+    "term_projection": {
+      "match": "#",
+      "name": "keyword.operator.builtin.projection.squirrel-prover"
+    },
+    "macro_application_operator": {
+      "match": "@",
+      "name": "keyword.operator.builtin.macroApplication.squirrel-prover"
+    },
+    "term_infix_builtin_operators": {
+      "match": "&&|\\|\\||=>|<=>|xor",
+      "name": "keyword.operator.termOperator.builtin.squirrel-prover"
+    },
+    "term_infix_left_operators": {
+      "match": "\\^((\\^|\\+|-|\\*|\\||&|~|<|>)*|[0-9]*(\\^|\\+|-|\\*|\\||&|~|<|>)+)",
+      "name": "keyword.operator.termOperator.left.squirrel-prover"
+    },
+    "term_infix_right_operators": {
+      "match": "(\\+|-\\*|\\||&|~)((\\^|\\+|-|\\*|\\||&|~|<|>)*|[0-9]*(\\^|\\+|-|\\*|\\||&|~|<|>)+)",
+      "name": "keyword.operator.termOperator.right.squirrel-prover"
+    },
+    "logic_local_quantifiers": {
+      "match": "(forall|exists)\\b",
+      "name": "keyword.localQuantifier.squirrel-prover"
+    },
+    "term_try_find_keywords": {
+      "match": "(try find|such that)\\b",
+      "name": "keyword.control.tryFindSuchThat.squirrel-prover"
+    },
+    "term_fun_keyword": {
+      "match": "fun\\b",
+      "name": "keyword.control.fun.squirrel-prover"
+    },
+    "logic_local_unary_operators": {
+      "match": "happens\\b",
+      "name": "keyword.term.localOperator.squirrel-prover"
+    },
+    "logic_global_unary_operators": {
+      "match": "equiv\\b",
+      "name": "keyword.globalOperator.squirrel-prover"
+    },
+    "logic_global_quantifiers": {
+      "match": "(Forall|Exists)\\b",
+      "name": "keyword.globalQuantifier.squirrel-prover"
+    },
+    "logic_global_operators": {
+      "match": "->|/\\|\\/",
+      "name": "keyword.operator.globalOperator.squirrel-prover"
+    },
+    "operators": {
+      "match": "->|\\+\\+|\\=|\\+|\\-|\\*|\\/|\\^|>=|<=|>|<",
+      "name": "keyword.operator.squirrel-prover"
+    },
+    "types_operators": { "comment": "useless since overriden by #operators",
+      "match": "->|\\*",
+      "name": "keyword.operator.type.squirrel-prover"
+    },
+    "type_variables": {
+      "match": "'[a-z][[:alnum:]']*",
+      "name": "storage.type.squirrel-prover"
+    },
+    "base_types": {
+      "match": "(bool|message|timestamp|index)\\b",
+      "name": "support.type.squirrel-prover"
+    },
+    "variable_tags": {
+      "match": "(const|glob|adv)\\b",
+      "name":"constant.language.varTag.squirrel-prover"
+    },
+    "wildcard": {
+      "match": "_\\b",
+      "name": "entity.name.identifier.squirrel-prover"
+    },
+    "type_tags": {
+      "match": "(large|well_founded|finite|fixed|name_fixed_length)\\b",
+      "name": "constant.language.typeTag.squirrel-prover"
+    },
+    "identifier": {
+      "match": "[a-z][[:alnum:]']*",
+      "name": "entity.name.identifier.squirrel-prover"
+    },
+    "Identifier": {
+      "match": "[A-Z][[:alnum:]']*",
+      "name": "constant.language.Identifier.squirrel-prover"
+    },
+    "period": {
+      "match": ".",
+      "name": "punctuation.period"
+    },
+    "semicolon": {
+      "match": ";",
+      "name": "punctuation.semicolon"
+    },
+    "colon": {
+      "match": ":",
+      "name": "punctuation.colon"
+    },
+    "slash": {
+      "match": "/",
+      "name": "punctuation.slash"
+    },
+    "pair_expression": {
+      "begin": "<",
+      "end": ">",
+      "beginCaptures": {
+        "0": { "name": "punctuation.paren.open" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.paren.close" }
+      },
+      "name": "expression.group",
+      "patterns": [{ "include": "#expression" }]
+    },
+    "paren_expression": {
+      "begin": "\\(|begin\\b",
+      "end": "\\)|end\\b",
+      "beginCaptures": {
+        "0": { "name": "punctuation.paren.open" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.paren.close" }
+      },
+      "name": "expression.group",
+      "patterns": [{ "include": "#expression" }]
+    }
+  }
+}
