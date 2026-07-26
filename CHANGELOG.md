@@ -1,9 +1,6 @@
 # Change Log
 
-All notable changes to the "vsquirrel" extension will be documented in this file.
+## [1.0.0]
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
-
-## [Unreleased]
-
-- Initial release
+- Add support for proof processing via squirrel's interactive mode.
+- Add syntaxic highlighting for squirrel's files.

@@ -1,13 +1,20 @@
 # VSquirrel
 
-VScod{e,ium} extension for Squirrel proof assistant
+VScod{e,ium} extension for [Squirrel proof assistant](https://squirrel-prover.github.io/).
 
 ## Features
 
+- Syntax highlighting for Squirrel (.sp) files;
+- start and manage proofs on a given file (a proof can be started on several files at a time).
+
+The extension bundles a [LSP server](https://github.com/zacharie-moughanim/pysquirrel-prover-lsp) to manage proofs via squirrel's interactive mode.
+
 ## Requirements
 
-- [Squirrel proof assistant](https://github.com/squirrel-prover/squirrel-prover)
-- A python interpreter
+Once these are installed, [check here to set up the extension.](#extension-settings).
+
+- Squirrel proof assistant follow the installation guide on [squirrel's repository](https://github.com/squirrel-prover/squirrel-prover/#readme).
+- A python interpreter.
 
 ## Extension Settings
 
@@ -18,12 +25,5 @@ There are two settings necessary for the extension to work:
 ## Known Issues
 
 - Colors are hard-coded (with variant for dark/light theme).
-- At least regarding highlighting, interpretedToPosition can have an unexpected behavior. 
 - Only one command can be in processing at a time.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
-- No syntax highlighting + maybe reuse directly squirrel's lexer with semantic highlighting.
-- Add color of proof highlighting in configuration.
-
-## Release Notes
-
-### 0.0.1
