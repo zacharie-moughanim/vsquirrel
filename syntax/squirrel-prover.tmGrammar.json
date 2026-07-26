@@ -42,6 +42,7 @@
         { "include": "#operators" },
         { "include": "#type_operators" },
         { "include": "#base_types" },
+        { "include": "#security_types" },
         { "include": "#type_tags" },
         { "include": "#type_variables" },
         { "include": "#variable_tags" },
@@ -217,6 +218,10 @@
     "base_types": {
       "match": "(bool|message|timestamp|index)\\b",
       "name": "support.type.squirrel-prover"
+    },
+    "security_types": {
+      "match": "(Msg|Bool|High|Low|Cst|Rand|SK|AK|SSK)\\b",
+      "name": "support.type.security.squirrel-prover"
     },
     "variable_tags": {
       "match": "(const|glob|adv)\\b",
