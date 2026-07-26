@@ -4,15 +4,9 @@ import * as vscode from 'vscode';
 
 import * as path from 'path';
 import { ChildProcess } from 'child_process';
-import { text } from 'stream/consumers';
-import { start } from 'repl';
-import { debug } from 'console';
 
 const { spawn } = require('node:child_process');
-const net = require('node:net');
-const assert = require('node:assert');
 
-// TODO bundle extension
 var ConvertANSIToHTML = require('ansi-to-html');
 
 var convertANSIToHTML = new ConvertANSIToHTML();
