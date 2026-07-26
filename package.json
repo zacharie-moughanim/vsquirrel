@@ -88,26 +88,62 @@
       "title": "VSquirrel Prover",
       "type": "object",
       "properties": {
-        "SquirrelProver.lsp.pythonInterpreterPath": {
+        "vsquirrel.lsp.pythonInterpreterPath": {
           "type": "string",
           "markdownDescription": "Path to a python interpreter used to run the LSP server. default:python",
           "default": "python",
           "order": 0
         },
-        "SquirrelProver.squirrelPath": {
+        "vsquirrel.squirrelPath": {
           "type": "string",
           "markdownDescription": "Path to squirrel. default:~/squirrel-prover/squirrel",
           "default": "~/squirrel-prover/squirrel",
           "order": 1
-        },
-        "SquirrelProver.errorHighlightColor": {
-          "type": "color",
-          "markdownDescription": "Color in which commands triggering errors are highlighted in the editor.",
-          "default": "#f00000",
-          "order": 2
         }
       }
     },
+    "colors": [
+      {
+        "id": "vsquirrel.proof.processing",
+        "description": "Highlighting color for a proof in processing.",
+        "defaults": {
+          "dark": "#00f04823",
+          "highContrast": "#00f04823",
+          "light": "#00f04823",
+          "highContrastLight": "#00f04823"
+        }
+      },
+      {
+        "id": "vsquirrel.proof.processed",
+        "description": "Highlighting color for processed proof.",
+        "defaults": {
+          "dark": "#00f04857",
+          "highContrast": "#00f04857",
+          "light": "#00f04857",
+          "highContrastLight": "#00f04857"
+        }
+      },
+      {
+        "id": "vsquirrel.proof.error",
+        "description": "Highlighting color for proof that triggered an error.",
+        "defaults": {
+          "dark": "#ff000057",
+          "highContrast": "#ff000057",
+          "light": "#ff000057",
+          "highContrastLight": "#ff000057"
+        }
+      },
+      {
+        "id": "vsquirrel.proof.warning",
+        "description": "Highlighting color for warning in a proof (typically `Abort` and `admit`).",
+        "defaults": {
+          "dark": "#f0e00057",
+          "highContrast": "#f0e00057",
+          "light": "#f0e00057",
+          "highContrastLight": "#f0e00057"
+        }
+      }
+    ],
     "languages": [
       {
         "id": "squirrel-prover",

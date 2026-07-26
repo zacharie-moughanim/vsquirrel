@@ -121,9 +121,9 @@ function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to :
 const startDocumentPosition = new vscode.Position(0, 0);
 
 // Decorations
-var processingProofColor = "#c3f8d357";
-var processedProofColor = "#00f04857";
-var processedErrorProofColor = "#f0000057";
+var processingProofColor = new vscode.ThemeColor("vsquirrel.proof.processing");
+var processedProofColor = new vscode.ThemeColor("vsquirrel.proof.processed");
+var processedErrorProofColor = new vscode.ThemeColor("vsquirrel.proof.error");
 
 class SquirrelDocumentProofState {
 	// Panels: editor & proof panel
