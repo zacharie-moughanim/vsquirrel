@@ -6,6 +6,8 @@
       "patterns": [
         { "include": "#comments" },
         { "include": "#naturals" },
+        { "include": "#module_inclusion"},
+        { "include": "#command_keywords" },
         { "include": "#formula_kinds" },
         { "include": "#bang_operator" },
         { "include": "#system_projections" },
@@ -19,7 +21,6 @@
         { "include": "#declaration_process_keywords" },
         { "include": "#declaration_system_keywords" },
         { "include": "#control_flow_keywords" },
-        { "include": "#module_inclusion"},
         { "include": "#other_keyword" },
         { "include": "#boolean_literal" },
         { "include": "#message_literal" },
@@ -64,6 +65,14 @@
     "naturals": {
       "match": "[0-9]+",
       "name": "constant.numeric.integer.squirrel-prover"
+    },
+    "module_inclusion": {
+      "match": "include\\b",
+      "name": "keyword.other.squirrel-prover"
+    },
+    "command_keywords": {
+      "match": "(Proof|Qed|Abort|Reset|set|print|search|hintprof)\\b",
+      "name": "keyword.command.squirrel-prover"
     },
     "formula_kinds": {
       "match": "(local|global)\\b",
@@ -116,10 +125,6 @@
     "control_flow_keywords": {
       "match": "(if|then|else)\\b",
       "name": "keyword.control.termConstructor.ifthenelse.squirrel-prover"
-    },
-    "module_inclusion": {
-      "match": "include\\b",
-      "name": "keyword.other.squirrel-prover"
     },
     "comma": {
       "match": ",",
