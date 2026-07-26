@@ -359,12 +359,12 @@ class SquirrelDocumentProofState {
 				// Move cursor to the end of processing proof, and scroll if needed
 				this.editor.selection = new vscode.Selection(lastPos, lastPos);
 				this.editor.revealRange(new vscode.Range(lastPos, lastPos));
-				// Update highlighting of proof in process
-				this.updateProofDecorations(new vscode.Range(this.lastProcessedProofPosition, this.endProofPosition), undefined, undefined);
 				for (let [cmd, pos] of commands) {
 					this.waitingForProofProcessing = true;
 					LSPSend({method:"vsquirrel/proofCommand", proofCommand: cmd, documentId: this.editor.document.fileName}, true);
 					this.updateEndProofPosition(pos);
+					// Update highlighting of proof in process
+					this.updateProofDecorations(new vscode.Range(this.lastProcessedProofPosition, this.endProofPosition), undefined, undefined);
 				}
 			}
 		}
@@ -528,12 +528,12 @@ function LSPRecvStdout(data : string) : void {
 								proofState.waitingForProofProcessing = false;
 							}
 						} else {
-							// Display error messages from squirrel on proof panel
+							// Display squirrel's response on proof panel
 							proofState.proofStateResponses.push([objRcvd.kind, squirrelAsHTML(objRcvd.payload)]);
 							if (!(Object.hasOwn(objRcvd, "continuing"))) {
 								if (Object.hasOwn(objRcvd, "commandFailed")) {
 									// Highlight the command that triggered the error
-									proofState.updateProofDecorations(undefined, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
+									proofState.updateProofDecorations(null, undefined, new vscode.Range(proofState.lastProcessedProofPosition, proofState.endProofPosition));
 									proofState.updateProofStateInWebview();
 								} else {
 									proofState.updateProofDecorations(null, new vscode.Range(startDocumentPosition, proofState.endProofPosition), null);

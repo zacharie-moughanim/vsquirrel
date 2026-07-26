@@ -29,4 +29,3 @@ There are two settings necessary for the extension to work:
 - Only one command can be in processing at a time.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
 - TODO proof navigation buggy after encountering an error.
-- TODO processing color disappeared ??
