@@ -8,6 +8,7 @@
         { "include": "#naturals" },
         { "include": "#module_inclusion"},
         { "include": "#command_keywords" },
+        { "include": "#admit_command_and_tactic" },
         { "include": "#formula_kinds" },
         { "include": "#bang_operator" },
         { "include": "#system_projections" },
@@ -74,6 +75,10 @@
     "command_keywords": {
       "match": "(Proof|Qed|Abort|Reset|set|print|search|hintprof)\\b",
       "name": "keyword.command.squirrel-prover"
+    },
+    "admit_command_and_tactic": {
+      "match": "\\badmit\\b",
+      "name": "invalid.illegal.admit.squirrel-prover"
     },
     "formula_kinds": {
       "match": "(local|global)\\b",
