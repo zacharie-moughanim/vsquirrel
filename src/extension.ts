@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 
 import * as path from 'path';
 import { ChildProcess } from 'child_process';
+import { debug } from 'console';
 
 const { spawn } = require('node:child_process');
 
@@ -17,10 +18,6 @@ const DEBUG_MODE : boolean = true;
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
 var client : any;
-
-// Paths to required software
-const configPythonPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("lsp.pythonInterpreterPath");
-const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("squirrelPath");
 
 // The LSP server subprocess
 var lsp_server : ChildProcess;
@@ -184,7 +181,7 @@ class SquirrelDocumentProofState {
 	}
 
 	public undoEndProofPosition() {
-		if (this.endProofPositionHistoric.length <= 1) {
+		if (this.endProofPositionHistoric.length <= 2) { // The historic must contain two positions: (..., position to restore, position to remove)
 			vscode.window.showErrorMessage("Nothing to undo (position).");
 		} else {
 			this.endProofPositionHistoric.pop();
@@ -232,9 +229,7 @@ class SquirrelDocumentProofState {
 	}
 
 	public refreshHighlights() {
-		vscode.window.showInformationMessage(`start pos: l.${startDocumentPosition.line} c.${startDocumentPosition.character}\nlast pos: l.${this.lastProcessedProofPosition.line} c.${this.lastProcessedProofPosition.character}`);
 		this.editor.setDecorations(this.decorationProcessedProof, [new vscode.Range(startDocumentPosition, this.lastProcessedProofPosition)]);
-		vscode.window.showInformationMessage("DONE!");
 		if (this.lastProcessingProofPosition !== undefined) {
 			this.editor.setDecorations(this.decorationProcessingProof, [new vscode.Range(this.lastProcessedProofPosition, this.lastProcessingProofPosition)]);
 		}
@@ -315,30 +310,30 @@ class SquirrelDocumentProofState {
 			}`;	
 		}
 		this.proofPanel.webview.html = `<!DOCTYPE html>
-	<html lang="en">
-	<head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<style>
-			${mainStyle}
-			${responsesStyle}
-			#column {
-				height: 100vh;
-			}
-			</style>
-			<title>Squirrel Proof</title>
-	</head>
-	<body>
-		<div id="column">
-			<div id="main">
-				${HTMLProofMain}
+		<html lang="en">
+		<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<style>
+				${mainStyle}
+				${responsesStyle}
+				#column {
+					height: 100vh;
+				}
+				</style>
+				<title>Squirrel Proof</title>
+		</head>
+		<body>
+			<div id="column">
+				<div id="main">
+					${HTMLProofMain}
+				</div>
+				<div id="responses">
+					${HTMLProofStateResponses}
+				</div>
 			</div>
-			<div id="responses">
-				${HTMLProofStateResponses}
-			</div>
-		</div>
-	</body>
-	</html>`;
+		</body>
+		</html>`;
 	}
 
 	private processCommands(commands : [string, vscode.Position][]) {
@@ -355,6 +350,7 @@ class SquirrelDocumentProofState {
 				} else {
 					lastPos = new vscode.Position(0, 0);
 					console.error("Panic.");
+					debugChannel.appendLine("Panic.");
 				}
 				// Move cursor to the end of processing proof, and scroll if needed
 				this.editor.selection = new vscode.Selection(lastPos, lastPos);
@@ -370,6 +366,10 @@ class SquirrelDocumentProofState {
 		}
 	}
 
+	/// Proof commands
+
+	/** nextProof() sends to the LSP server the command between [this.lastProcessedProofPosition] and the position of the next dot (out of comment).
+	 */
 	public nextProof() {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
@@ -380,14 +380,25 @@ class SquirrelDocumentProofState {
 				vscode.window.showErrorMessage("VSquirrel: No dot to get the proof to in the remaining of the document.");
 			} else {
 				const bufferProof : string = this.editor.document.getText(new vscode.Range(this.lastProcessedProofPosition, nextDotPosition));
+				this.lastProcessingProofPosition = nextDotPosition;
 				this.processCommands([[bufferProof, nextDotPosition]]);
 			}
 		}
 	}
 
+	/**
+	 * undoCommands(n, moveCursor) undo some commands.
+	 * @param [n=1] the number of commands to undo.
+	 * @param [moveCursor=true] whether to move the cursor to the new last processed point. Typically when modifying in the processed section, we don't want to move the cursor.
+	 */
 	private undoCommands(n : number = 1, moveCursor : boolean = true) {
 		this.waitingForProofProcessing = true;
-		LSPSend({method:"vsquirrel/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName}, true);
+		// If the last command resulted in an error, it is not to undo since it did not produce any result.
+		let actualN : number = n;
+		if (this.lastErrorProofPosition !== undefined) {
+			--actualN;
+		}
+		LSPSend({method:"vsquirrel/proofCommand", proofCommand: `undo ${actualN}.`, documentId: this.editor.document.fileName}, true);
 		// Update last processed point in the proof
 		for (let i = 0; i < n; ++i) {
 			if (this.endProofPositionHistoric.length === 0) {
@@ -408,6 +419,9 @@ class SquirrelDocumentProofState {
 		}
 	}
 
+	/**
+	 * undo last command.
+	 */
 	public undoProof() {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
@@ -472,6 +486,7 @@ class SquirrelDocumentProofState {
 		}
 	}
 }
+
 var proofStates : Map<string, SquirrelDocumentProofState> = new Map();
 
 /// Proof actual evaluation (interacting with LSP)
@@ -481,6 +496,7 @@ var idx : number = 0;
 function LSPSend(obj : object, withUniqueId : boolean = false) {
 	if (lsp_server.stdin === null) {
 		console.error("LSP server: stdin undefined while sending");
+		debugChannel.appendLine("LSP server: stdin undefined while sending.");
 	} else {
 		if (withUniqueId) {
 			var obj2 : any = obj; // TODO see if there's no better option
@@ -492,6 +508,7 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 		lsp_server.stdin.write(`${msg_with_header}`);
 		if (DEBUG_MODE) {
 			console.log(`==== Sent ====\n${msg_with_header}\n============`);
+			debugChannel.appendLine(`==== Sent ====\n${msg_with_header}\n============`);
 		}
 	}
 }
@@ -502,20 +519,19 @@ function LSPRecvStdout(data : string) : void {
 	if (Object.hasOwn(objRcvd, "method")) {
 		if (objRcvd.method === "vsquirrel/squirrelProofOutput") {
 			if(!(Object.hasOwn(objRcvd, "kind"))) {
-				vscode.window.showErrorMessage("Received LSP message without expepted field [kind].");
+				vscode.window.showErrorMessage("Received LSP message without expected field [kind].");
 			} else {
 				if(!(Object.hasOwn(objRcvd, "documentId"))) {
-					vscode.window.showErrorMessage("Received LSP message without expepted field [kind].");
+					vscode.window.showErrorMessage("Received LSP message without expected field [kind].");
 				} else {
 					let proofState = proofStates.get(objRcvd.documentId);
 					if (proofState === undefined) {
 						vscode.window.showErrorMessage("Panic: LSP server mentions a closed or nonexistent file.");
 					} else {
-						if (Object.hasOwn(objRcvd, "resetResponses")) {
-							proofState.proofStateMain = [];
-							proofState.proofStateResponses = [];
-						}
 						if (objRcvd.kind === "goal") {
+							if (Object.hasOwn(objRcvd, "resetResponses")) {
+								proofState.proofStateMain = [];
+							}
 							proofState.lastProcessingProofPosition = proofState.endProofPosition;
 							proofState.proofStateResponses = [];
 							proofState.proofStateMain.push(squirrelAsHTML(objRcvd.payload));
@@ -528,6 +544,9 @@ function LSPRecvStdout(data : string) : void {
 								proofState.waitingForProofProcessing = false;
 							}
 						} else {
+							if (Object.hasOwn(objRcvd, "resetResponses")) {
+								proofState.proofStateResponses = [];
+							}
 							// Display squirrel's response on proof panel
 							proofState.proofStateResponses.push([objRcvd.kind, squirrelAsHTML(objRcvd.payload)]);
 							if (!(Object.hasOwn(objRcvd, "continuing"))) {
@@ -552,17 +571,39 @@ function LSPRecvStdout(data : string) : void {
 
 /** Manage [data] received on stderr, if [data] represent a single JSON object. */
 function LSPRecvStderr(data : string) : void {
-	const objRcvd = JSON.parse(data);
+	let objRcvd;
+	try {
+		objRcvd = JSON.parse(data);
+	} catch (e) {
+		vscode.window.showWarningMessage(data);
+	}
 	if (Object.hasOwn(objRcvd, "method")) {
 		if (objRcvd.method === "vsquirrel/lsperror") {
+			// If LSP failed to start squirrel, we remove the corresponding `ProofState` from `proofStates`
+			if (Object.hasOwn(objRcvd, "failStartup")) {
+				const documentId : string = objRcvd.failStartup;
+				if (proofStates.has(documentId)) {
+					closeProofClientSide(documentId, true);
+				}
+			}
 			vscode.window.showWarningMessage(`VSquirrel LSP error message: ${objRcvd.data}`);
+			if (DEBUG_MODE) {
+				console.error(`VSquirrel LSP error message: ${objRcvd.data}`);
+			}
 		} else if (objRcvd.method === "vsquirrel/debug") {
-			vscode.window.showInformationMessage(`VSquirrel LSP Error message: ${objRcvd.data}`);
+			console.error(`VSquirrel LSP debug message: ${objRcvd.data}`);
+			debugChannel.appendLine(`VSquirrel LSP debug message: ${objRcvd.data}`);
 		} else {
 			vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+			if (DEBUG_MODE) {
+				console.error(`VSquirrel: LSP server stderr: ${data}`);
+			}
 		}
 	} else {
 		vscode.window.showErrorMessage(`VSquirrel: LSP server stderr: ${data}`);
+		if (DEBUG_MODE) {
+			console.error(`VSquirrel: LSP server stderr: ${data}`);
+		}
 	}
 }
 
@@ -609,11 +650,12 @@ function squirrelAsHTML(body : string) : string {
 	return convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>");
 }
 
-function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
+function closeProofClientSide(documentId : string, disposeWebviewPanel : boolean) : boolean {
 	// Closing is used to avoir loop in case closeProof --triggers--> dispose webview --triggers--> closeProof ...
 	let proofState = proofStates.get(documentId);
 	if (proofState === undefined) {
 		vscode.window.showErrorMessage("VSquirrel: Proof is not started.");
+		return false;
 	} else if (!proofState.closing) {
 		proofState.closing = true;
 		if (disposeWebviewPanel) {
@@ -625,6 +667,13 @@ function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
 		proofState.decorationErrorProof.dispose();
 		proofState.decorationProcessedProof.dispose();
 		proofState.decorationProcessingProof.dispose();
+		return true;
+	}
+	return false;
+}
+
+function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
+	if (closeProofClientSide(documentId, disposeWebviewPanel)) {
 		// Telling the server to close proof
 		LSPSend({method:"vsquirrel/closeProof", documentId: documentId}, true);
 	}
@@ -634,6 +683,10 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('VSquirrel is now active.');
 	vscode.window.showInformationMessage('VSquirrel is now active.');
 	debugChannel = vscode.window.createOutputChannel("Squirrel Debug", {log : true});
+
+	// Paths to required software
+	const configPythonPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("lsp.pythonInterpreterPath");
+	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("squirrelPath");
 
 	// Finding paths to python and squirrel
 	var pythonPath : string;
@@ -646,13 +699,14 @@ export function activate(context: vscode.ExtensionContext) {
 	if (configSquirrelPath !== undefined) {
 		squirrelPath = configSquirrelPath;
 	} else {
-		squirrelPath = "python";
+		squirrelPath = "~/";
 	}
 	// Path to LSP server
-	let serverStartCLOptions : string[] = ["squirrel_server.py"];
+	let serverStartCLOptions : string[] = [path.join(context.extensionPath, "server", "pysquirrel-prover-lsp", "squirrel_server.py")];
 	const server_workdir : string = context.asAbsolutePath(path.join('server', 'pysquirrel-prover-lsp'));
 
 	console.log(`${pythonPath} ${serverStartCLOptions}`);
+	debugChannel.appendLine(`${pythonPath} ${serverStartCLOptions}`);
 
 	// Spawning LSP Server
 	lsp_server = spawn(pythonPath, serverStartCLOptions, { "cwd": server_workdir });
@@ -662,6 +716,7 @@ export function activate(context: vscode.ExtensionContext) {
 		lsp_server.stdout.on('data', (data : string) => {
 			buf_stdout += data;
 			console.log(`==stdout==\n${data}\n==end stdendout==`);
+			debugChannel.appendLine(`==stdout==\n${data}\n==end stdendout==`);
 			if (DEBUG_MODE) {
 				debugChannel.appendLine(data);
 			}
@@ -698,6 +753,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	} else {
 		console.error("LSP server: stdout undefined");
+		debugChannel.appendLine(`LSP server: stdout undefined`);
 	}
 
 	if (lsp_server.stderr !== null) {
@@ -706,7 +762,7 @@ export function activate(context: vscode.ExtensionContext) {
 			buf_stderr += data;
 			console.error(`==stderr==\n${data}\n==end stderr==`);
 			if (DEBUG_MODE) {
-				debugChannel.appendLine(data);
+				debugChannel.appendLine(`==stderr==\n${data}\n==end stderr==`);
 			}
 			// Parsing buffer. It may contain several chunks of the form HEADER\r\nAJSONOBJECT. We read all such chunks and pass them to LSPRecvStdout
 			let stillDataToParse : boolean = true;
@@ -741,6 +797,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	} else {
 		console.error("LSP server: stderr undefined");
+		debugChannel.appendLine(`LSP server: stderr undefined`);
 	}
 
 	lsp_server.on('close', (code : number, signal : string) => {
@@ -802,10 +859,20 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 					}
 				});
+				// Finding paths to python and squirrel
+				var squirrelPath : string;
+				// Paths to required software
+				const configSquirrelPath2 : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath");
+				debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
+				if (configSquirrelPath2 !== undefined) {
+					squirrelPath = configSquirrelPath2;
+				} else {
+					squirrelPath = "~/squirrel-prover/squirrel";
+				}
+				debugChannel.appendLine(`Path to squirrel before sending to LSP: ${squirrelPath}`);
 				// Adding an entry to proof states for this file and information to the LSP server
 				proofStates.set(textEditor.document.fileName, new SquirrelDocumentProofState(textEditor, proofPanel));
 				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
-
 			}
 		}
 	);
