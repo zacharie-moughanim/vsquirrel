@@ -24,8 +24,7 @@ There are two settings necessary for the extension to work:
 
 ## Known Issues
 
+- Using the `undo` command directly in a file (e.g. writing `undo 3.` and processing this command via VSquirrel) may lead to errors, for a safe execution, use only `Undo last proof command` provided by VSquirrel  
 - Colors (for webview, not editor) are hard-coded (with variant for dark/light theme).
-- `admit` and `Abort` are not highlighted, they appear just as `Qed`.
 - Only one command can be in processing at a time.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
-- TODO proof navigation buggy after encountering an error.
