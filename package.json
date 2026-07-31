@@ -156,8 +156,8 @@
         "filenames": [],
         "configuration": "./squirrel-prover-language-configuration.json",
         "icon": {
-          "light": "./icons/squirrel_light.png",
-          "dark": "./icons/squirrel_dark.png"
+          "light": "./icons/squirrel_light.svg",
+          "dark": "./icons/squirrel_dark.svg"
         }
       }
     ],
