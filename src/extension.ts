@@ -448,7 +448,6 @@ class SquirrelDocumentProofState {
 		.error {
 			${CSSColorError}
 		}
-		
 		`;	
 		const mainStyle = `#main {
 			border-bottom: .5em solid;
@@ -874,8 +873,10 @@ export function activate(context: vscode.ExtensionContext) {
 	debugChannel = vscode.window.createOutputChannel("Squirrel Debug", {log : true});
 
 	// Paths to required software
-	const configPythonPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("lsp.pythonInterpreterPath");
-	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('SquirrelProver').get("squirrelPath");
+
+	debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
+	const configPythonPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath");
+	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath");
 
 	// Finding paths to python and squirrel
 	var pythonPath : string;
@@ -1051,7 +1052,6 @@ export function activate(context: vscode.ExtensionContext) {
 				var squirrelPath : string;
 				// Paths to required software
 				const configSquirrelPath2 : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath");
-				debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
 				if (configSquirrelPath2 !== undefined) {
 					squirrelPath = configSquirrelPath2;
 				} else {

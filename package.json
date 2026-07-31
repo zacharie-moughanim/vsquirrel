@@ -1,6 +1,6 @@
 {
   "name": "vsquirrel",
-  "displayName": "vsquirrel",
+  "displayName": "VSquirrel",
   "description": "VScod{e,ium} extension for Squirrel proof assistant.",
   "categories": [
     "Programming Languages"
@@ -10,7 +10,7 @@
   ],
   "publisher": "zacharie-moughanim",
   "icon": "./icons/squirrel_logo.png",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
