@@ -13,7 +13,7 @@ var ConvertANSIToHTML = require('ansi-to-html');
 var convertANSIToHTML = new ConvertANSIToHTML();
 
 // Whether to display debug messages
-const DEBUG_MODE : boolean = true;
+const DEBUG_MODE : boolean = false;
 
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
@@ -355,7 +355,6 @@ class SquirrelDocumentProofState {
 	public undoLastProcessedProofPosition() : void {
 		if (this.lastProcessedProofPositionHistoric.length < 2) { // The historic must contain two positions: (..., position to restore, position to remove)
 			vscode.window.showErrorMessage("Nothing to undo (position).");
-			debugChannel.appendLine(`${string_of_positions(this.lastProcessedProofPositionHistoric)}`);
 		} else {
 			this.lastProcessedProofPositionHistoric.pop();
 			const posToRestore = this.lastProcessedProofPositionHistoric.at(-1);
@@ -545,7 +544,6 @@ class SquirrelDocumentProofState {
 				// Data must be a number, corresponding to an `undo` command.
 				// We (visually) undo nUndos commands: update positions and move cursor to new end position.
 				let nUndos : number = correspondingCommand;
-				debugChannel.appendLine(`We have to undo ${nUndos}...`);
 				for (let i = 0; i < nUndos; ++i) {
 					this.undoPositions();
 				}
@@ -873,8 +871,9 @@ export function activate(context: vscode.ExtensionContext) {
 	debugChannel = vscode.window.createOutputChannel("Squirrel Debug", {log : true});
 
 	// Paths to required software
-
-	debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
+	if (DEBUG_MODE) {
+		debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
+	}
 	const configPythonPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath");
 	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath");
 
@@ -895,8 +894,10 @@ export function activate(context: vscode.ExtensionContext) {
 	let serverStartCLOptions : string[] = [path.join(context.extensionPath, "server", "pysquirrel-prover-lsp", "squirrel_server.py")];
 	const server_workdir : string = context.asAbsolutePath(path.join('server', 'pysquirrel-prover-lsp'));
 
-	console.log(`${pythonPath} ${serverStartCLOptions}`);
-	debugChannel.appendLine(`${pythonPath} ${serverStartCLOptions}`);
+	if (DEBUG_MODE) {
+		console.log(`${pythonPath} ${serverStartCLOptions}`);
+		debugChannel.appendLine(`${pythonPath} ${serverStartCLOptions}`);
+	}
 
 	// Spawning LSP Server
 	lsp_server = spawn(pythonPath, serverStartCLOptions, { "cwd": server_workdir });
@@ -1057,7 +1058,9 @@ export function activate(context: vscode.ExtensionContext) {
 				} else {
 					squirrelPath = "~/squirrel-prover/squirrel";
 				}
-				debugChannel.appendLine(`Path to squirrel before sending to LSP: ${squirrelPath}`);
+				if (DEBUG_MODE) {
+					debugChannel.appendLine(`Path to squirrel before sending to LSP: ${squirrelPath}`);
+				}
 				// Adding an entry to proof states for this file and information to the LSP server
 				proofStates.set(textEditor.document.fileName, new SquirrelDocumentProofState(textEditor, proofPanel));
 				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
