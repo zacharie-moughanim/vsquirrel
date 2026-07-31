@@ -1,6 +1,6 @@
 {
-  "name": "vsquirrel",
-  "displayName": "VSquirrel",
+  "name": "vsquirrel-prover",
+  "displayName": "VSquirrel Prover",
   "description": "VScod{e,ium} extension for Squirrel proof assistant.",
   "categories": [
     "Programming Languages"
