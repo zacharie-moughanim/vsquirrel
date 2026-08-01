@@ -11,7 +11,7 @@ The extension bundles a [LSP server](https://github.com/zacharie-moughanim/pysqu
 
 ## Get started
 
-When focused on a squirrel file, you can use the `Start Proof` command (via the command palette or by pressing the run button), then you can navigate in the file with `nextProof`, etc. See all commands in server's `Features > Commands`.
+When focused on a squirrel file, you can use the `Start Proof` command (via the command palette or by pressing the run button), then you can navigate in the file with `nextProof`, etc. See all commands in `Features > Commands`.
 
 ## Requirements
 
