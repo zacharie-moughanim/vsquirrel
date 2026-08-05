@@ -508,7 +508,7 @@ class SquirrelDocumentProofState {
 				debugChannel.appendLine("PANIC.");
 			} else {
 				const nextCommand : string = mayNextCommand.command;
-				LSPSend({method:"vsquirrel/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
+				LSPSend({method:"pysquirrellsp/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
 				this.waitingForProofProcessing = true;
 				this.commandSentToLSP = mayNextCommand.endPos;
 			}
@@ -618,7 +618,7 @@ class SquirrelDocumentProofState {
 		} else {
 			this.waitingForProofProcessing = true;
 			this.commandSentToLSP = n;
-			LSPSend({method:"vsquirrel/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName, moveCursor: moveCursor}, true);
+			LSPSend({method:"pysquirrellsp/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName, moveCursor: moveCursor}, true);
 			this.commandsWaitingQueue.clear();
 		}
 	}
@@ -742,7 +742,7 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 function LSPRecvStdout(data : string) : void {
 	const objRcvd = JSON.parse(data);
 	if (Object.hasOwn(objRcvd, "method")) {
-		if (objRcvd.method === "vsquirrel/squirrelProofOutput") {
+		if (objRcvd.method === "pysquirrellsp/squirrelProofOutput") {
 			if(!(Object.hasOwn(objRcvd, "kind"))) {
 				vscode.window.showErrorMessage("Received LSP message without expected field [kind].");
 			} else {
@@ -807,7 +807,7 @@ function LSPRecvStderr(data : string) : void {
 		vscode.window.showWarningMessage(data);
 	}
 	if (Object.hasOwn(objRcvd, "method")) {
-		if (objRcvd.method === "vsquirrel/lsperror") {
+		if (objRcvd.method === "pysquirrellsp/lsperror") {
 			// If LSP failed to start squirrel, we remove the corresponding `ProofState` from `proofStates`
 			if (Object.hasOwn(objRcvd, "failStartup")) {
 				const documentId : string = objRcvd.failStartup;
@@ -819,7 +819,7 @@ function LSPRecvStderr(data : string) : void {
 			if (DEBUG_MODE) {
 				console.error(`VSquirrel LSP error message: ${objRcvd.data}`);
 			}
-		} else if (objRcvd.method === "vsquirrel/debug") {
+		} else if (objRcvd.method === "pysquirrellsp/debug") {
 			console.error(`VSquirrel LSP debug message: ${objRcvd.data}`);
 			debugChannel.appendLine(`VSquirrel LSP debug message: ${objRcvd.data}`);
 		} else {
@@ -861,7 +861,7 @@ function closeProofClientSide(documentId : string, disposeWebviewPanel : boolean
 function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
 	if (closeProofClientSide(documentId, disposeWebviewPanel)) {
 		// Telling the server to close proof
-		LSPSend({method:"vsquirrel/closeProof", documentId: documentId}, true);
+		LSPSend({method:"pysquirrellsp/closeProof", documentId: documentId}, true);
 	}
 }
 
@@ -1063,7 +1063,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 				// Adding an entry to proof states for this file and information to the LSP server
 				proofStates.set(textEditor.document.fileName, new SquirrelDocumentProofState(textEditor, proofPanel));
-				LSPSend({method:"vsquirrel/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
+				LSPSend({method:"pysquirrellsp/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
 			}
 		}
 	);
