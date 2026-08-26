@@ -241,12 +241,8 @@
       "name": "constant.language.typeTag.squirrel-prover"
     },
     "identifier": {
-      "match": "[a-z][[:alnum:]']*",
+      "match": "[a-zA-Z][[:alnum:]']*",
       "name": "entity.name.identifier.squirrel-prover"
-    },
-    "Identifier": {
-      "match": "[A-Z][[:alnum:]']*",
-      "name": "constant.language.Identifier.squirrel-prover"
     },
     "period": {
       "match": ".",
