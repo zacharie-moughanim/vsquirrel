@@ -13,7 +13,7 @@ var ConvertANSIToHTML = require('ansi-to-html');
 var convertANSIToHTML = new ConvertANSIToHTML();
 
 // Whether to display debug messages
-const DEBUG_MODE : boolean = false;
+const DEBUG_MODE : boolean = true;
 
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
@@ -244,7 +244,6 @@ class SquirrelDocumentProofState {
 	/**
 	 * Whether a command was sent to the LSP server and we're waiting for a response.
 	 * INVARIANT: waitingForProofProcessing === (commandSentToLSP !== undefined)
-	 * TODO remove in favor of the invariant.
 	 */
 	waitingForProofProcessing : boolean;
 	/** List of command that are waiting to be processed (e.g. after an interpretToPosition) */
@@ -307,8 +306,8 @@ class SquirrelDocumentProofState {
 			}
 		} else {
 			if (this.lastProcessingProofPosition !== undefined) {
-				console.log("PANIC invariant on positions TODO error/processing");
-				debugChannel.appendLine("PANIC invariant on positions  TODO error/processing");
+				console.log("PANIC invariant on positions");
+				debugChannel.appendLine("PANIC invariant on positions ");
 			} else {
 				if (this.lastErrorProofPosition.isBefore(this.lastProcessedProofPosition)) {
 					console.log("PANIC invariant on positions");
@@ -447,6 +446,14 @@ class SquirrelDocumentProofState {
 		.error {
 			${CSSColorError}
 		}
+		.test {
+			background-color: var(--vscode-editor-foreground);
+			color: var(--vscode-editor-background);
+		}
+		.otherTest {
+			background-color: var(--vscode-editor-foreground);
+			color: var(--vscode-vsquirrel-proof-error);
+		}
 		`;	
 		const mainStyle = `#main {
 			border-bottom: .5em solid;
@@ -484,6 +491,8 @@ class SquirrelDocumentProofState {
 				<title>Squirrel Proof</title>
 		</head>
 		<body>
+			<h1 class="test">Test TEST</h1>
+			<h2 class="otherTest">the other... TEST !</h2>
 			<div id="column">
 				<div id="main">
 					${HTMLProofMain}
@@ -562,7 +571,7 @@ class SquirrelDocumentProofState {
 	private processCommands(commands : [string, vscode.Position][]) {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
-			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed.");
+			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
 		} else {
 			const lastCmd : [string, vscode.Position] | undefined = commands.at(-1);
 			if (lastCmd !== undefined) {
@@ -572,8 +581,8 @@ class SquirrelDocumentProofState {
 					lastPos = mayLastPos;
 				} else {
 					lastPos = new vscode.Position(0, 0);
-					console.error("Panic.");
-					debugChannel.appendLine("Panic.");
+					console.error("Panic. No last proof position, there should always be one (at least the beginning of the file).");
+					debugChannel.appendLine("Panic. No last proof position, there should always be one (at least the beginning of the file).");
 				}
 				this.waitingForProofProcessing = true;
 				for (let [cmd, pos] of commands) {
@@ -594,7 +603,7 @@ class SquirrelDocumentProofState {
 	public nextProof() {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
-			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed.");
+			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
 		} else {
 			const nextDotPosition : vscode.Position | undefined = findNextDot(this.editor.document, this.lastProcessedProofPosition);
 			if (nextDotPosition === undefined) {
@@ -629,16 +638,14 @@ class SquirrelDocumentProofState {
 	public undoProof() {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
-			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed.");
+			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
 		} else {
 			// If the last command resulted in an error, it is not to undo since it did not produce any result.
 			if (this.lastErrorProofPosition === undefined) {
 				if (findPrevDot(this.editor.document, this.lastProcessedProofPosition) === undefined) {
 					vscode.window.showErrorMessage("VSquirrel: No proof command to undo.");
 				} else {
-					this.undoCommands(1, true); /** TODOTODOTODOTODOTODO
-						+ coloring after error is green and red superposed...
-					*/
+					this.undoCommands(1, true);
 				}
 			} else {
 				this.updateLastErrorProofPosition(undefined);
@@ -659,7 +666,7 @@ class SquirrelDocumentProofState {
 	public interpretToPosition(pos : vscode.Position, moveCursor : boolean = true) {
 		if (this.waitingForProofProcessing) {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
-			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed.");
+			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
 		} else {
 			// If the position is before the last processed point, we undo some commands, otherwise we process some more commands.
 			if (pos.isBefore(this.lastProcessedProofPosition)) {
@@ -724,7 +731,7 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 		debugChannel.appendLine("LSP server: stdin undefined while sending.");
 	} else {
 		if (withUniqueId) {
-			var obj2 : any = obj; // TODO see if there's no better option
+			var obj2 : any = obj; // TODO see if there's no better option (intermediary variable because of cast typing issue)
 			obj2.id = idx;
 			idx += 1;
 		}
