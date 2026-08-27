@@ -145,6 +145,9 @@ function findPrevDot(doc : vscode.TextDocument, from : vscode.Position) : vscode
 	return predPos;
 }
 
+/**
+ * `countDotBetween(doc, from, to)` returns the number of (out of comments) dot found between `from` and `to` in `doc`.`
+ */
 function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to : vscode.Position) : number {
 	let prevChar : string;
 	let curChar : string = "";
@@ -507,6 +510,9 @@ class SquirrelDocumentProofState {
 
 	/// PROOF COMMANDS
 
+	/** `processNextWaitingCommand()` sends to LSP the next command in `commandsWaitingQueue` if any, and marks it 
+	 * as the command for which an answer from the LSP is expected.
+	 */
 	private processNextWaitingCommand() {
 		if (this.commandsWaitingQueue.isEmpty()) {
 			this.commandSentToLSP = undefined;
@@ -517,17 +523,22 @@ class SquirrelDocumentProofState {
 				debugChannel.appendLine("PANIC.");
 			} else {
 				const nextCommand : string = mayNextCommand.command;
-				LSPSend({method:"pysquirrellsp/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
+				LSPSend({method: "pysquirrellsp/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
 				this.waitingForProofProcessing = true;
 				this.commandSentToLSP = mayNextCommand.endPos;
 			}
 		}
 	}
 
+	/**
+	 * `commandResponseReceived(error, moveCursor)` manages a received response for a sent command.
+	 * Basically, it displays visually that the command was processed.
+	 * @param error whether the response indicated that an error occured during command processing.²a
+	 */
 	public commandResponseReceived(error : boolean = false, moveCursor : boolean = false) {
-		if (DEBUG_MODE) {
-			debugChannel.appendLine(`BEFORE: lastProcessed: ${string_of_position(this.lastProcessedProofPosition)} ||| historic: ${string_of_positions(this.lastProcessedProofPositionHistoric)}\nlastProcessing: ${string_of_position(this.lastProcessingProofPosition)}\nlastError: ${string_of_position(this.lastErrorProofPosition)}\nend: ${string_of_position(this.endProofPosition)}`);
-		}
+		// if (DEBUG_MODE) {
+		// 	debugChannel.appendLine(`BEFORE: lastProcessed: ${string_of_position(this.lastProcessedProofPosition)} ||| historic: ${string_of_positions(this.lastProcessedProofPositionHistoric)}\nlastProcessing: ${string_of_position(this.lastProcessingProofPosition)}\nlastError: ${string_of_position(this.lastErrorProofPosition)}\nend: ${string_of_position(this.endProofPosition)}`);
+		// }
 		const mayCorrespondingCommand : vscode.Position | number | undefined = this.commandSentToLSP;
 		if (mayCorrespondingCommand === undefined) {
 			console.log("Panic. Received response to a command while no command was sent.");
@@ -556,43 +567,43 @@ class SquirrelDocumentProofState {
 				for (let i = 0; i < nUndos; ++i) {
 					this.undoPositions();
 				}
-				this.moveCursorToEnd();
+				if (moveCursor) {
+					this.moveCursorToEnd();
+				}
 			}
 			this.waitingForProofProcessing = false;
 			// If there are still command waiting to be processed, we process the next one.
 			this.processNextWaitingCommand();
 		}
-		if (DEBUG_MODE) {
-			debugChannel.appendLine(`AFTER: lastProcessed: ${string_of_position(this.lastProcessedProofPosition)} ||| historic: ${string_of_positions(this.lastProcessedProofPositionHistoric)}\nlastProcessing: ${string_of_position(this.lastProcessingProofPosition)}\nlastError: ${string_of_position(this.lastErrorProofPosition)}\nend: ${string_of_position(this.endProofPosition)}`);
-		}
+		// if (DEBUG_MODE) {
+		// 	debugChannel.appendLine(`AFTER: lastProcessed: ${string_of_position(this.lastProcessedProofPosition)} ||| historic: ${string_of_positions(this.lastProcessedProofPositionHistoric)}\nlastProcessing: ${string_of_position(this.lastProcessingProofPosition)}\nlastError: ${string_of_position(this.lastErrorProofPosition)}\nend: ${string_of_position(this.endProofPosition)}`);
+		// }
 	}
 
 	/** `processCommands(commands)` sends to LSP server each command in `commands`, it updates the positions and the highlighting. */
 	private processCommands(commands : [string, vscode.Position][]) {
-		if (this.waitingForProofProcessing) {
-			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
-			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
-		} else {
-			const lastCmd : [string, vscode.Position] | undefined = commands.at(-1);
-			if (lastCmd !== undefined) {
-				const mayLastPos : vscode.Position | string | undefined = lastCmd.at(1);
-				let lastPos : vscode.Position;
-				if (mayLastPos instanceof vscode.Position) {
-					lastPos = mayLastPos;
-				} else {
-					lastPos = new vscode.Position(0, 0);
-					console.error("Panic. No last proof position, there should always be one (at least the beginning of the file).");
-					debugChannel.appendLine("Panic. No last proof position, there should always be one (at least the beginning of the file).");
-				}
-				this.waitingForProofProcessing = true;
-				for (let [cmd, pos] of commands) {
-					this.commandsWaitingQueue.enqueue(new commandWaitingForProcessingData(cmd, pos));
-					this.updateLastProcessingProofPosition(pos);
-				}
-				// Update highlighting of proof in processing
-				this.refreshHighlights();
-				// Move cursor to the end of processing proof, and scroll if needed
-				this.moveCursorToEnd();
+		for (let [cmd, pos] of commands) {
+			this.commandsWaitingQueue.enqueue(new commandWaitingForProcessingData(cmd, pos));
+			this.updateLastProcessingProofPosition(pos);
+		}
+		const previouslyWaitingForProofProcessing : boolean = this.waitingForProofProcessing;
+		const lastCmd : [string, vscode.Position] | undefined = commands.at(-1);
+		if (lastCmd !== undefined) { // If there is at least one command to process
+			const mayLastPos : vscode.Position | string | undefined = lastCmd.at(1);
+			let lastPos : vscode.Position;
+			if (mayLastPos instanceof vscode.Position) {
+				lastPos = mayLastPos;
+			} else {
+				lastPos = new vscode.Position(0, 0);
+				console.error("Panic. No last proof position, there should always be one (at least the beginning of the file).");
+				debugChannel.appendLine("Panic. No last proof position, there should always be one (at least the beginning of the file).");
+			}
+			this.waitingForProofProcessing = true;
+			// Update highlighting of proof in processing
+			this.refreshHighlights();
+			// Move cursor to the end of processing proof, and scroll if needed
+			this.moveCursorToEnd();
+			if (!previouslyWaitingForProofProcessing) {
 				this.processNextWaitingCommand();
 			}
 		}
@@ -605,7 +616,14 @@ class SquirrelDocumentProofState {
 			// TODO authorizing the processing of several command may lead to errors, for now let's keep that and see if we can lift the restriction in the future. 
 			vscode.window.showErrorMessage("VSquirrel: Wait for last command to be processed."); // TODOTODO
 		} else {
-			const nextDotPosition : vscode.Position | undefined = findNextDot(this.editor.document, this.lastProcessedProofPosition);
+			// Searching command between the last position of the proof to next dot.
+			// The last position may be `lastProcessedProofPosition` or `lastProcessingProofPosition` if the latter is defined.
+			let fromPos : vscode.Position = this.lastProcessedProofPosition;
+			let processingPos : vscode.Position | undefined = this.lastProcessingProofPosition;
+			if (processingPos !== undefined) {
+				fromPos = processingPos;
+			}
+			const nextDotPosition : vscode.Position | undefined = findNextDot(this.editor.document, fromPos);
 			if (nextDotPosition === undefined) {
 				vscode.window.showErrorMessage("VSquirrel: No dot to get the proof to in the remaining of the document.");
 			} else {
@@ -627,7 +645,11 @@ class SquirrelDocumentProofState {
 		} else {
 			this.waitingForProofProcessing = true;
 			this.commandSentToLSP = n;
-			LSPSend({method:"pysquirrellsp/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName, moveCursor: moveCursor}, true);
+			let msg : any = {method:"pysquirrellsp/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName};
+			if (moveCursor) {
+				msg = {method:"pysquirrellsp/proofCommand", proofCommand: `undo ${n}.`, documentId: this.editor.document.fileName, moveCursor: moveCursor};
+			}
+			LSPSend(msg, true);
 			this.commandsWaitingQueue.clear();
 		}
 	}
@@ -670,8 +692,20 @@ class SquirrelDocumentProofState {
 		} else {
 			// If the position is before the last processed point, we undo some commands, otherwise we process some more commands.
 			if (pos.isBefore(this.lastProcessedProofPosition)) {
-				const n : number = countDotBetween(this.editor.document, pos, this.lastProcessedProofPosition);
-				this.undoCommands(n, moveCursor);
+				let nToUndo : number = 0;
+				for (let i = this.lastProcessedProofPositionHistoric.length - 1; i >= 0; --i) {
+					const pastProcessedProofPos = this.lastProcessedProofPositionHistoric.at(i);
+					if (pastProcessedProofPos === undefined) {
+						debugChannel.appendLine("Panic. Out of bounds in proof position historic.");
+					} else {
+						if (pos.isBefore(pastProcessedProofPos)) {
+							++nToUndo;
+						} else {
+							break;
+						}
+					}
+				}
+				this.undoCommands(nToUndo, moveCursor);
 			} else {
 				let preTargetDotPos : vscode.Position | undefined = findPrevDot(this.editor.document, pos);
 				let targetDotPos : vscode.Position;
@@ -873,8 +907,6 @@ function closeProof(documentId : string, disposeWebviewPanel : boolean) : void {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('VSquirrel is now active.');
-	vscode.window.showInformationMessage('VSquirrel is now active.');
 	debugChannel = vscode.window.createOutputChannel("Squirrel Debug", {log : true});
 
 	// Paths to required software
@@ -1139,10 +1171,10 @@ export function activate(context: vscode.ExtensionContext) {
 							proofState.clearError();
 						}
 					}
-					proofState.refreshHighlights();
 					if (minimalModifiedPoint.isBefore(proofState.endProofPosition)) {
 						proofState.interpretToPosition(minimalModifiedPoint, false);
 					}
+					proofState.refreshHighlights();
 				}
 			}
 		},
