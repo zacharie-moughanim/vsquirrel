@@ -13,7 +13,7 @@ var ConvertANSIToHTML = require('ansi-to-html');
 var convertANSIToHTML = new ConvertANSIToHTML();
 
 // Whether to display debug messages
-const DEBUG_MODE : boolean = true;
+const DEBUG_MODE : boolean = false;
 
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
@@ -449,14 +449,6 @@ class SquirrelDocumentProofState {
 		.error {
 			${CSSColorError}
 		}
-		.test {
-			background-color: var(--vscode-editor-foreground);
-			color: var(--vscode-editor-background);
-		}
-		.otherTest {
-			background-color: var(--vscode-editor-foreground);
-			color: var(--vscode-vsquirrel-proof-error);
-		}
 		`;	
 		const mainStyle = `#main {
 			border-bottom: .5em solid;
@@ -494,8 +486,6 @@ class SquirrelDocumentProofState {
 				<title>Squirrel Proof</title>
 		</head>
 		<body>
-			<h1 class="test">Test TEST</h1>
-			<h2 class="otherTest">the other... TEST !</h2>
 			<div id="column">
 				<div id="main">
 					${HTMLProofMain}
@@ -1044,11 +1034,6 @@ export function activate(context: vscode.ExtensionContext) {
 		console.error(`LSP server error: ${err}`);
 	});
 
-	// For debugging, kill LSP server
-	const killServer = vscode.commands.registerCommand('vsquirrel.killServer', () => {
-		lsp_server.kill();
-	});
-
 	// Command to start a proof on a given file
 	const startProofCmd = vscode.commands.registerTextEditorCommand('vsquirrel.startProof',
 		(textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, args: any[]) => {
@@ -1208,7 +1193,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(nextProofCmd);
 	context.subscriptions.push(undoProofCmd);
 	context.subscriptions.push(goToProofCmd);
-	context.subscriptions.push(killServer);
 }
 
 // This method is called when your extension is deactivated
