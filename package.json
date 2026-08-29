@@ -10,7 +10,7 @@
   ],
   "publisher": "tresml-lang",
   "icon": "./icons/squirrel_logo.png",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -32,10 +32,6 @@
         "command": "vsquirrel.closeProof",
         "title": "Close proof",
         "icon": "$(debug-stop)"
-      },
-      {
-        "command": "vsquirrel.killServer",
-        "title": "Kill LSP server"
       },
       {
         "command": "vsquirrel.nextProof",
