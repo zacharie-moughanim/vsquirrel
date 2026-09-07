@@ -179,6 +179,24 @@ function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to :
 	return cnt;
 }
 
+// Searching substring while maitaining document's positions of found pattern 
+/** Finds all occurences of each pattern in `patterns` in `text`.
+ * Assuming the `text` comes from a range of a document whose end is `endTextPos`,
+ * returns a list of ranges where each occurrence of each pattern appears.
+ * Example: substringSearchWithPosition("foo\nbar foo", new Position(2, 6), [foo, bar]) returns
+ * 		[
+ * 			[ {(1,0)..(1,3)}, {(2,4)..(2,6)} ],
+ * 			[ {(2,0)..(2,3)} ]
+ * 		]
+*/
+function substringSearchWithPosition(text : string, endTextPos : vscode.Position, patterns : string[]) : vscode.Range[][] {
+	let textLines = text.split("\n");
+	let nLines = textLines.length;
+	for (let [i, line] of text.split("\n").entries()) {
+		// TODO finish this & all the stuff about admit/abort
+	}
+}
+
 /// Squirrel's output pretty-printing
 
 /** Convert Squirrel's output to text suitable for HTML */
@@ -195,10 +213,13 @@ const startDocumentPosition = new vscode.Position(0, 0);
 var processingProofColor = new vscode.ThemeColor("vsquirrel.proof.processing");
 var processedProofColor = new vscode.ThemeColor("vsquirrel.proof.processed");
 var processedErrorProofColor = new vscode.ThemeColor("vsquirrel.proof.error");
+var processedAdmitProofColor = new vscode.ThemeColor("vsquirrel.proof.warning");
+var processedAbortProofColor = new vscode.ThemeColor("vsquirrel.proof.abort");
 
 class commandWaitingForProcessingData {
 	command : string;
 	endPos : vscode.Position;
+	warningRanges : [vscode.Range[], vscode.Range[]];
 
 	constructor(cmd : string, pos : vscode.Position) {
 		this.command = cmd;
@@ -230,6 +251,12 @@ class commandBuffer {
 	}
 }
 
+enum CommandKind {
+	Basic,
+	Abort,
+	Admit
+}
+
 class SquirrelDocumentProofState {
 	// Panels: editor & proof panel
 	editor : vscode.TextEditor;
@@ -244,6 +271,8 @@ class SquirrelDocumentProofState {
 	lastProcessedProofPositionHistoric : vscode.Position[];
 	lastProcessingProofPosition : vscode.Position | undefined;
 	lastErrorProofPosition : vscode.Position | undefined;
+	admitRanges : vscode.Range[];
+	abortRanges : vscode.Range[];
 	/**
 	 * Whether a command was sent to the LSP server and we're waiting for a response.
 	 * INVARIANT: waitingForProofProcessing === (commandSentToLSP !== undefined)
@@ -253,13 +282,17 @@ class SquirrelDocumentProofState {
 	commandsWaitingQueue : commandBuffer;
 	/** The command sent to LSP server for which no response has been received yet, if any.
 	 * If it's a number, then it corresponds to an `undo` and the value is the argument of `undo`
-	 * Otherwise, the value is a range such that the command sent is this.document.getText(commandSentToLSP).
+	 * Otherwise, the value is a pair of:
+	 * - the last position of the the range from which the command comes;
+	 * - a kind of command, indicating whether it's a basic command, an abort or an admit.
 	 */
-	commandSentToLSP : vscode.Position | number | undefined;
+	commandSentToLSP : [vscode.Position, CommandKind] | number | undefined;
 	// Decorations
 	decorationProcessingProof : vscode.TextEditorDecorationType;
 	decorationProcessedProof : vscode.TextEditorDecorationType;
 	decorationErrorProof : vscode.TextEditorDecorationType;
+	decorationAdmitProof : vscode.TextEditorDecorationType;
+	decorationAbortProof : vscode.TextEditorDecorationType;
 
 	closing : boolean;
 
@@ -271,7 +304,9 @@ class SquirrelDocumentProofState {
 		waitingForProofProcessing = false,
 		decorationProcessingProof = vscode.window.createTextEditorDecorationType({backgroundColor : processingProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed}),
 		decorationProcessedProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed}),
-		decorationErrorProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedErrorProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed})
+		decorationErrorProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedErrorProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed}),
+		decorationAdmitProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedAdmitProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed}),
+		decorationAbortProof = vscode.window.createTextEditorDecorationType({backgroundColor : processedAbortProofColor, rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed})
 	) {
 		this.editor = editor;
 		this.proofPanel = proofPanel;
@@ -283,11 +318,15 @@ class SquirrelDocumentProofState {
 		this.lastProcessedProofPosition = lastProcessedPos;
 		this.waitingForProofProcessing = waitingForProofProcessing;
 		this.lastProcessedProofPositionHistoric = [this.lastProcessedProofPosition];
+		this.admitRanges = [];
+		this.abortRanges = [];
 		this.commandsWaitingQueue = new commandBuffer();
 
 		this.decorationProcessingProof = decorationProcessingProof;
 		this.decorationProcessedProof = decorationProcessedProof;
 		this.decorationErrorProof = decorationErrorProof;
+		this.decorationAdmitProof = decorationAdmitProof;
+		this.decorationAbortProof = decorationAbortProof;
 
 		this.closing = false;
 	}
@@ -418,6 +457,8 @@ class SquirrelDocumentProofState {
 		} else {
 			this.editor.setDecorations(this.decorationErrorProof, []);
 		}
+		this.editor.setDecorations(this.decorationAbortProof, this.abortRanges);
+		this.editor.setDecorations(this.decorationAdmitProof, this.admitRanges);
 	}
 
 	/// Returns proof states in an HTML page, adapted to display in a webview.
@@ -515,7 +556,7 @@ class SquirrelDocumentProofState {
 				const nextCommand : string = mayNextCommand.command;
 				LSPSend({method: "pysquirrellsp/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
 				this.waitingForProofProcessing = true;
-				this.commandSentToLSP = mayNextCommand.endPos;
+				this.commandSentToLSP = [mayNextCommand.endPos, mayNextCommand.getKind()];
 			}
 		}
 	}
@@ -536,7 +577,7 @@ class SquirrelDocumentProofState {
 		} else {
 			const correspondingCommand : vscode.Position | number = mayCorrespondingCommand;
 			if (correspondingCommand instanceof vscode.Position) {
-				let newLastPos : vscode.Position = correspondingCommand; 
+				let newLastPos : vscode.Position = correspondingCommand;
 				// If no command is in processing anymore, we unhighlight everything with the corresponding decoration.
 				if (this.commandsWaitingQueue.isEmpty()) {
 					this.updateLastProcessingProofPosition(undefined);

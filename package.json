@@ -131,12 +131,22 @@
       },
       {
         "id": "vsquirrel.proof.warning",
-        "description": "Highlighting color for warning in a proof (typically `Abort` and `admit`).",
+        "description": "Highlighting color for admitted part of a proof.",
         "defaults": {
-          "dark": "#f0e00057",
-          "highContrast": "#f0e00057",
-          "light": "#f0e00057",
-          "highContrastLight": "#f0e00057"
+          "dark": "#ffee0057",
+          "highContrast": "#ffee0057",
+          "light": "#ffee0057",
+          "highContrastLight": "#ffee0057"
+        }
+      },
+      {
+        "id": "vsquirrel.proof.abort",
+        "description": "Highlighting color for aborted part of a proof.",
+        "defaults": {
+          "dark": "#ff770057",
+          "highContrast": "#ff770057",
+          "light": "#ff770057",
+          "highContrastLight": "#ff770057"
         }
       }
     ],
@@ -181,7 +191,7 @@
     "@vscode/vsce": "^3.7.1",
     "ansi-to-html": ">0.0.0",
     "glob": "^11.0.0",
-    "vsce": "^1.97.0"
+    "vsce": "^1.103.1"
   },
   "scripts": {
     "compile": "npm run check-types && node esbuild.js",
