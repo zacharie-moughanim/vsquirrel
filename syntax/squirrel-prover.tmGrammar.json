@@ -49,7 +49,6 @@
         { "include": "#variable_tags" },
         { "include": "#wildcard" },
         { "include": "#identifier" },
-        { "include": "#Identifier" },
         { "include": "#period" },
         { "include": "#semicolon" },
         { "include": "#colon" },
@@ -63,10 +62,6 @@
       "begin": "\\(\\*",
       "end": "\\*\\)",
       "name": "comment.block.squirrel-prover"
-    },
-    "naturals": {
-      "match": "[0-9]+",
-      "name": "constant.numeric.integer.squirrel-prover"
     },
     "module_inclusion": {
       "match": "include\\b",
@@ -241,8 +236,12 @@
       "name": "constant.language.typeTag.squirrel-prover"
     },
     "identifier": {
-      "match": "[a-zA-Z][[:alnum:]']*",
+      "match": "[a-zA-Z_][[:alnum:]']*\\b",
       "name": "entity.name.identifier.squirrel-prover"
+    },
+    "naturals": {
+      "match": "[0-9]+\\b",
+      "name": "constant.numeric.integer.squirrel-prover"
     },
     "period": {
       "match": ".",
