@@ -50,6 +50,17 @@ function string_of_positions(poses : (vscode.Position | undefined)[]) : string {
 	return (buf + "]");
 }
 
+/// UTILS
+
+/** `unpack(x, def) = x` if `x` is not `undefined` and is `def` otherwise. */
+function unpack<T>(x : T | undefined, def : T) : T {
+	if (x === undefined) {
+		return def;
+	} else {
+		return x;
+	}
+}
+
 /// HELPER EDITOR FUNCTIONS: to navigate in the document
 
 /** Returns next valid position after [from] in [doc]. It may add a line if the position is at the end of a line.
@@ -179,6 +190,59 @@ function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to :
 	return cnt;
 }
 
+type Tail<T> =	T extends [infer X, ...infer XS] ? XS : never
+
+/** `Occurrences<[string, ..., string]> = [vscode.Range[], ..., vscode.Range[]]` with as many `vscode.Range[]` as there are `string` in the argument.  */
+type SameLengthArray<T, Y> = { [I in keyof T] : Y };
+
+// function mapTypeSafe<T extends SameLengthArray<T, X>, X, Y>(arr : T, callbackfn: (value : X, index: number, array: X[]) => Y) : SameLengthArray<T, X> {
+// 	let x : SameLengthArray<T, X> =  arr;
+// 	x.set(0, x);
+// 	return x;
+// }
+
+/** Returns the vscode range corresponding to a chunk of length `chunkLength` starting from
+ * `chunkLineOffset` and `chunkStartCharOffset` within the range Range(startPos, endPos)
+ * 
+ * ⚠️ Only works if the chunk is on a single line ⚠️
+ * 
+ * Example: assume we have startPos0 = Position(1, 2) and endPos0 = Position(3, 4) and `document`
+ * designate a document whose text is:
+ * 
+ * ############ document ############
+ * 
+ * Some text on several line in
+ * 
+ * a file, which is great since
+ * 
+ * I have an example to give in
+ * 
+ * this function's description
+ * 
+ * which is getting more and more
+ * 
+ * obscure.
+ * 
+ * ##################################
+ * 
+ * let `range_a = getRangeOfChunkWithin(document.getText(new Range(startPos0, endPos0)) 2, 3, 3, startPos0, endPos0)`
+ * then `document.getText(range_a)` returns `"s f"`
+ * let `range_b = getRangeOfChunkWithin(document.getText(new Range(startPos0, endPos0)) 0, 3, 3, startPos0, endPos0)`
+ * then `document.getText(range_b)` returns `"e, "` */
+function getRangeOfChunkWithin(chunkLine : number, chunkStartChar : number, chunkLength : number, startPos : vscode.Position) : vscode.Range {
+	if (chunkLine === 0) {
+		return new vscode.Range(
+			new vscode.Position(startPos.line, startPos.character + chunkStartChar),
+			new vscode.Position(startPos.line, startPos.character + chunkStartChar + chunkLength)
+		);
+	} else {
+		return new vscode.Range(
+			new vscode.Position(startPos.line + chunkLine, chunkStartChar),
+			new vscode.Position(startPos.line + chunkLine, chunkStartChar + chunkLength)
+		);
+	}
+}
+
 // Searching substring while maitaining document's positions of found pattern 
 /** Finds all occurences of each pattern in `patterns` in `text`.
  * Assuming the `text` comes from a range of a document whose end is `endTextPos`,
@@ -189,12 +253,24 @@ function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to :
  * 			[ {(2,0)..(2,3)} ]
  * 		]
 */
-function substringSearchWithPosition(text : string, endTextPos : vscode.Position, patterns : string[]) : vscode.Range[][] {
+function substringSearchWithPosition<T extends string[]>(text : string, startTextPos : vscode.Position, patterns : T) : vscode.Range[][] {
 	let textLines = text.split("\n");
 	let nLines = textLines.length;
-	for (let [i, line] of text.split("\n").entries()) {
-		// TODO finish this & all the stuff about admit/abort
+	let res : vscode.Range[][] = patterns.map((it : string) : vscode.Range[] => []);
+	for (let [iLine, line] of text.split("\n").entries()) {
+		for (let [iChar, c] of line.split("").entries()) {
+			for (let [iPat, pat] of patterns.entries()) {
+				if (iChar + pat.length < line.length) {
+					if (line.substring(iChar, iChar + pat.length) === pat) {
+						res.at(iPat)?.push(
+							getRangeOfChunkWithin(iLine, iChar, pat.length, startTextPos)
+						);
+					}
+				}
+			}
+		}
 	}
+	return res;
 }
 
 /// Squirrel's output pretty-printing
@@ -213,21 +289,22 @@ const startDocumentPosition = new vscode.Position(0, 0);
 var processingProofColor = new vscode.ThemeColor("vsquirrel.proof.processing");
 var processedProofColor = new vscode.ThemeColor("vsquirrel.proof.processed");
 var processedErrorProofColor = new vscode.ThemeColor("vsquirrel.proof.error");
-var processedAdmitProofColor = new vscode.ThemeColor("vsquirrel.proof.warning");
+var processedAdmitProofColor = new vscode.ThemeColor("vsquirrel.proof.admit");
 var processedAbortProofColor = new vscode.ThemeColor("vsquirrel.proof.abort");
 
 class commandWaitingForProcessingData {
 	command : string;
-	endPos : vscode.Position;
-	warningRanges : [vscode.Range[], vscode.Range[]];
+	startPos : vscode.Position;
+	endPos : vscode.Position; // Keeping startPos/endPos for now for retrocompatibility. TODO At some point replace with a single range.
 
-	constructor(cmd : string, pos : vscode.Position) {
+	constructor(cmd : string, startPos : vscode.Position, endPos : vscode.Position) {
 		this.command = cmd;
-		this.endPos = pos;
+		this.startPos = startPos;
+		this.endPos = endPos;
 	}
 }
 
-class commandBuffer {
+class commandBuffer { // TODO implement a more efficient queue
 	private content : commandWaitingForProcessingData[];
 
 	constructor() {
@@ -251,12 +328,6 @@ class commandBuffer {
 	}
 }
 
-enum CommandKind {
-	Basic,
-	Abort,
-	Admit
-}
-
 class SquirrelDocumentProofState {
 	// Panels: editor & proof panel
 	editor : vscode.TextEditor;
@@ -273,6 +344,8 @@ class SquirrelDocumentProofState {
 	lastErrorProofPosition : vscode.Position | undefined;
 	admitRanges : vscode.Range[];
 	abortRanges : vscode.Range[];
+	highlightAdmit : boolean;
+	highlightAbort : boolean;
 	/**
 	 * Whether a command was sent to the LSP server and we're waiting for a response.
 	 * INVARIANT: waitingForProofProcessing === (commandSentToLSP !== undefined)
@@ -284,9 +357,9 @@ class SquirrelDocumentProofState {
 	 * If it's a number, then it corresponds to an `undo` and the value is the argument of `undo`
 	 * Otherwise, the value is a pair of:
 	 * - the last position of the the range from which the command comes;
-	 * - a kind of command, indicating whether it's a basic command, an abort or an admit.
+	 * - [admitRanges, abortRanges], ranges corresponding to the occurences of admit and abort in the command.
 	 */
-	commandSentToLSP : [vscode.Position, CommandKind] | number | undefined;
+	commandSentToLSP : [vscode.Position, [vscode.Range[], vscode.Range[]]] | number | undefined;
 	// Decorations
 	decorationProcessingProof : vscode.TextEditorDecorationType;
 	decorationProcessedProof : vscode.TextEditorDecorationType;
@@ -327,6 +400,21 @@ class SquirrelDocumentProofState {
 		this.decorationErrorProof = decorationErrorProof;
 		this.decorationAdmitProof = decorationAdmitProof;
 		this.decorationAbortProof = decorationAbortProof;
+		
+		const mayHighlightAdmit : boolean | undefined = vscode.workspace.getConfiguration('vsquirrel').get("highlightAdmit") ;
+		const mayHighlightAbort : boolean | undefined = vscode.workspace.getConfiguration('vsquirrel').get("highlightAbort") ;
+
+		if (mayHighlightAdmit === undefined) {
+			this.highlightAdmit = true;
+		} else {
+			this.highlightAdmit = mayHighlightAdmit;
+		}
+
+		if (mayHighlightAbort === undefined) {
+			this.highlightAbort = true;
+		} else {
+			this.highlightAbort = mayHighlightAbort;
+		}
 
 		this.closing = false;
 	}
@@ -403,6 +491,13 @@ class SquirrelDocumentProofState {
 				vscode.window.showErrorMessage("panic. not supposed to happen because we're in the else branch of the condition above.");
 			} else {
 				this.lastProcessedProofPosition = posToRestore; // Correct even if .at returns [undefined]
+				// Removing abort and admit ranges occurring after the new `lastProcessedProofPosition`
+				while (this.abortRanges.at(-1)?.end.isAfter(this.lastProcessedProofPosition)) {
+					this.abortRanges.pop();	
+				}
+				while (this.admitRanges.at(-1)?.end.isAfter(this.lastProcessedProofPosition)) {
+					this.admitRanges.pop();	
+				}
 			}
 			this.refreshEndProofPosition();
 		}
@@ -431,6 +526,14 @@ class SquirrelDocumentProofState {
 
 	public clearError() {
 		this.updateLastErrorProofPosition(undefined);
+	}
+
+	public addAbortRanges(abortRanges : vscode.Range[]) {
+		this.abortRanges.push(...abortRanges);
+	}
+
+	public addAdmitRanges(admitRanges : vscode.Range[]) {
+		this.admitRanges.push(...admitRanges);
 	}
 
 	/// CURSOR 
@@ -556,7 +659,21 @@ class SquirrelDocumentProofState {
 				const nextCommand : string = mayNextCommand.command;
 				LSPSend({method: "pysquirrellsp/proofCommand", proofCommand: nextCommand, documentId: this.editor.document.fileName}, true);
 				this.waitingForProofProcessing = true;
-				this.commandSentToLSP = [mayNextCommand.endPos, mayNextCommand.getKind()];
+				if (this.highlightAbort && this.highlightAdmit) {
+					let mayAdmitAbortRanges : vscode.Range[][] = substringSearchWithPosition(nextCommand, mayNextCommand.startPos, ["admit", "Abort"]);
+					let admitAbortRanges : [vscode.Range[], vscode.Range[]] = [unpack(mayAdmitAbortRanges.at(0), []), unpack(mayAdmitAbortRanges.at(1), [])];
+					this.commandSentToLSP = [mayNextCommand.endPos, admitAbortRanges];
+				} else if (this.highlightAdmit) {
+					let mayAdmitAbortRanges : vscode.Range[][] = substringSearchWithPosition(nextCommand, mayNextCommand.startPos, ["admit"]);
+					let admitAbortRanges : [vscode.Range[], vscode.Range[]] = [unpack(mayAdmitAbortRanges.at(0), []), []];
+					this.commandSentToLSP = [mayNextCommand.endPos, admitAbortRanges];
+				} else if (this.highlightAbort) {
+					let mayAdmitAbortRanges : vscode.Range[][] = substringSearchWithPosition(nextCommand, mayNextCommand.startPos, ["Abort"]);
+					let admitAbortRanges : [vscode.Range[], vscode.Range[]] = [[], unpack(mayAdmitAbortRanges.at(0), [])];
+					this.commandSentToLSP = [mayNextCommand.endPos, admitAbortRanges];
+				} else {
+					this.commandSentToLSP = [mayNextCommand.endPos, [[], []]];
+				}
 			}
 		}
 	}
@@ -570,14 +687,25 @@ class SquirrelDocumentProofState {
 		// if (DEBUG_MODE) {
 		// 	debugChannel.appendLine(`BEFORE: lastProcessed: ${string_of_position(this.lastProcessedProofPosition)} ||| historic: ${string_of_positions(this.lastProcessedProofPositionHistoric)}\nlastProcessing: ${string_of_position(this.lastProcessingProofPosition)}\nlastError: ${string_of_position(this.lastErrorProofPosition)}\nend: ${string_of_position(this.endProofPosition)}`);
 		// }
-		const mayCorrespondingCommand : vscode.Position | number | undefined = this.commandSentToLSP;
+		const mayCorrespondingCommand : [vscode.Position, [vscode.Range[], vscode.Range[]]] | number | undefined = this.commandSentToLSP;
 		if (mayCorrespondingCommand === undefined) {
 			console.log("Panic. Received response to a command while no command was sent.");
 			debugChannel.appendLine("Panic. Received response to a command while no command was sent.");
 		} else {
-			const correspondingCommand : vscode.Position | number = mayCorrespondingCommand;
-			if (correspondingCommand instanceof vscode.Position) {
-				let newLastPos : vscode.Position = correspondingCommand;
+			const correspondingCommand : [vscode.Position, [vscode.Range[], vscode.Range[]]] | number = mayCorrespondingCommand;
+			if (typeof correspondingCommand === "number") {
+				// Data is a number, corresponding to an `undo` command.
+				// We (visually) undo nUndos commands: update positions and move cursor to new end position.
+				let nUndos : number = correspondingCommand;
+				for (let i = 0; i < nUndos; ++i) {
+					this.undoPositions();
+				}
+				if (moveCursor) {
+					this.moveCursorToEnd();
+				}
+			} else {
+				// Data corresponds to a command
+				let [newLastPos, [admitRanges, abortRanges]] = correspondingCommand;
 				// If no command is in processing anymore, we unhighlight everything with the corresponding decoration.
 				if (this.commandsWaitingQueue.isEmpty()) {
 					this.updateLastProcessingProofPosition(undefined);
@@ -589,17 +717,9 @@ class SquirrelDocumentProofState {
 					// Move cursor to the end of processing proof, and scroll if needed
 					this.moveCursorToEnd();
 				} else {
-					this.updateLastProcessedProofPosition(newLastPos); 
-				}
-			} else {
-				// Data must be a number, corresponding to an `undo` command.
-				// We (visually) undo nUndos commands: update positions and move cursor to new end position.
-				let nUndos : number = correspondingCommand;
-				for (let i = 0; i < nUndos; ++i) {
-					this.undoPositions();
-				}
-				if (moveCursor) {
-					this.moveCursorToEnd();
+					this.updateLastProcessedProofPosition(newLastPos);
+					this.addAdmitRanges(admitRanges);
+					this.addAbortRanges(abortRanges);
 				}
 			}
 			this.waitingForProofProcessing = false;
@@ -612,18 +732,18 @@ class SquirrelDocumentProofState {
 	}
 
 	/** `processCommands(commands)` sends to LSP server each command in `commands`, it updates the positions and the highlighting. */
-	private processCommands(commands : [string, vscode.Position][]) {
-		for (let [cmd, pos] of commands) {
-			this.commandsWaitingQueue.enqueue(new commandWaitingForProcessingData(cmd, pos));
-			this.updateLastProcessingProofPosition(pos);
+	private processCommands(commands : [string, vscode.Range][]) {
+		for (let [cmd, range] of commands) {
+			this.commandsWaitingQueue.enqueue(new commandWaitingForProcessingData(cmd, range.start, range.end));
+			this.updateLastProcessingProofPosition(range.end);
 		}
 		const previouslyWaitingForProofProcessing : boolean = this.waitingForProofProcessing;
-		const lastCmd : [string, vscode.Position] | undefined = commands.at(-1);
+		const lastCmd : [string, vscode.Range] | undefined = commands.at(-1);
 		if (lastCmd !== undefined) { // If there is at least one command to process
-			const mayLastPos : vscode.Position | string | undefined = lastCmd.at(1);
+			const mayLastRange : vscode.Range | string | undefined = lastCmd.at(1);
 			let lastPos : vscode.Position;
-			if (mayLastPos instanceof vscode.Position) {
-				lastPos = mayLastPos;
+			if (mayLastRange instanceof vscode.Range) {
+				lastPos = mayLastRange.end;
 			} else {
 				lastPos = new vscode.Position(0, 0);
 				console.error("Panic. No last proof position, there should always be one (at least the beginning of the file).");
@@ -658,8 +778,9 @@ class SquirrelDocumentProofState {
 			if (nextDotPosition === undefined) {
 				vscode.window.showErrorMessage("VSquirrel: No dot to get the proof to in the remaining of the document.");
 			} else {
-				const bufferProof : string = this.editor.document.getText(new vscode.Range(this.lastProcessedProofPosition, nextDotPosition));
-				this.processCommands([[bufferProof, nextDotPosition]]);
+				const cmdRange : vscode.Range = new vscode.Range(this.lastProcessedProofPosition, nextDotPosition);
+				const bufferProof : string = this.editor.document.getText(cmdRange);
+				this.processCommands([[bufferProof, cmdRange]]);
 			}
 		}
 	}
@@ -747,7 +868,7 @@ class SquirrelDocumentProofState {
 				}
 				if (!targetDotPos.isEqual(this.lastProcessedProofPosition)) {
 					// Iterating over the range lastProcessedProofPosition..targetDotPos, and recording all commands seen in array `commands`
-					let commands : [string, vscode.Position][] = [];
+					let commands : [string, vscode.Range][] = [];
 					let prevChar : string;
 					let curChar : string = "";
 					let lastCommandBeginningPos : vscode.Position = this.lastProcessedProofPosition;
@@ -771,7 +892,8 @@ class SquirrelDocumentProofState {
 								withinComment = true;
 							}
 							if (curChar === ".") {
-								commands.push([this.editor.document.getText(new vscode.Range(lastCommandBeginningPos, nextPos)), nextPos]);
+								const cmdRange = new vscode.Range(lastCommandBeginningPos, nextPos);
+								commands.push([this.editor.document.getText(cmdRange), cmdRange]);
 								lastCommandBeginningPos = nextPos;
 							}
 						}
@@ -1020,8 +1142,8 @@ export function activate(context: vscode.ExtensionContext) {
 		lsp_server.stderr.setEncoding("utf8");
 		lsp_server.stderr.on('data', (data : string) => {
 			buf_stderr += data;
-			console.error(`==stderr==\n${data}\n==end stderr==`);
 			if (DEBUG_MODE) {
+				console.error(`==stderr==\n${data}\n==end stderr==`);
 				debugChannel.appendLine(`==stderr==\n${data}\n==end stderr==`);
 			}
 			// Parsing buffer. It may contain several chunks of the form HEADER\r\nAJSONOBJECT. We read all such chunks and pass them to LSPRecvStdout
