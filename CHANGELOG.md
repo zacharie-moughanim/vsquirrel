@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.5.0]
+
+- Explained in more details possible errors on extension's startup.
+- Implement highlighting of `admit` and `Abort` commands.
+- Add two customizable colors for highlighting these two commands.
+- Add settings to disable highlighting of `admit` and/or `Abort`.
+
 ## [0.2.0]
 
 - Fix syntax highlighting, now correctly colors identifiers starting with a capital letters as identifiers.
