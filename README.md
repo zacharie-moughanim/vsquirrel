@@ -23,8 +23,8 @@ Once these are installed, [check here to set up the extension.](#extension-setti
 ## Extension Settings
 
 There are two settings necessary for the extension to work:
-- the path to the compiled squirrel file;
-- the path to a python interpreter.
+- the path to the compiled squirrel file. Once squirrel is installed and compiled, you can find the path with the command `which squirrel`;
+- the path to a python interpreter. If you have python installed, it's probably `python` or `python3`.
 
 ## Extension Colors
 
