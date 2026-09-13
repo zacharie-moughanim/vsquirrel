@@ -2,7 +2,7 @@
 
 ## [0.5.0]
 
-- Explained in more details possible errors on extension's startup.
+- Explained in more detail possible errors on extension's startup.
 - Implement highlighting of `admit` and `Abort` commands.
 - Add two customizable colors for highlighting these two commands.
 - Add settings to disable highlighting of `admit` and/or `Abort`.
