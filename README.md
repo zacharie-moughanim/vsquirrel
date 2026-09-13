@@ -25,13 +25,19 @@ Once these are installed, [check here to set up the extension.](#extension-setti
 There are two settings necessary for the extension to work:
 - the path to the compiled squirrel file. Once squirrel is installed and compiled, you can find the path with the command `which squirrel`;
 - the path to a python interpreter. If you have python installed, it's probably `python` or `python3`.
+Then, there are two settings to chose to highlight abandoned/admitted proofs or not:
+- Whether or not to highlight processed `admit` commands;
+- Whether or not to highlight processed `Abort` commands.
 
 ## Extension Colors
 
-The extension provides three colors, which can be modified in `Settings > Color Customization`, corresponding to the highlight's color on an ongoing proof:
+The extension provides colors, which can be modified in `Settings > Color Customization`, corresponding to the highlight's color on an ongoing proof:
 - a color for processed proof `vsquirrel.proof.processed`;
 - a color for proof in processing `vsquirrel.proof.processing`;
 - a color for a command that triggered an error `vsquirrel.proof.error`.
+The two following highlighting can be disabled [in the settings](#extension-settings).
+- a color for highlighting `admit`s in a processed command `vsquirrel.proof.admit`.
+- a color for highlighting `abort`s in a processed command `vsquirrel.proof.abort`.
 
 ## Known Issues
 
