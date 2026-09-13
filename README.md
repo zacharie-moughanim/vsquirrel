@@ -37,7 +37,9 @@ The extension provides three colors, which can be modified in `Settings > Color 
 
 - Using the `undo` command directly in a file (e.g. writing `undo 3.` and processing this command via VSquirrel) may lead to errors, for a safe execution, use only `Undo last proof command` provided by VSquirrel.
 - If you get an error on extension's activation, this may be caused by a wrong path to python, check it in the extension's setting.
-- If you get an error when starting a proof, this may be caused by a wrong path to squirrel, check it in the extension's setting.
+- If you get an error when starting a proof, this may be caused by:
+  - a wrong path to squirrel, check it in the extension's setting;
+  - or try to enter a full path to squirrel's executable rather than just `squirrel` or `~/squirrel`. You can find the full path with the command `which squirrel` if `squirrel` is in the PATH environment variable.
 - Text colors (for squirrel's response in webview) are hard-coded (with variant for dark/light theme).
 - Only one command can be in processing at a time, for now.
 - Squirrel has a HTML export, though not directly accessible via the CLI in interactive mode, whereas the extension transforms the prompt output of squirrel into HTML.
