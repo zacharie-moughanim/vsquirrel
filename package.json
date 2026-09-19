@@ -96,6 +96,12 @@
           "default": "~/squirrel-prover/squirrel",
           "order": 1
         },
+        "vsquirrel.webviewFontSize": {
+          "type": "number",
+          "markdownDescription": "Font size in webview (proof goals, etc)",
+          "default": "12",
+          "order": 1
+        },
         "vsquirrel.highlightAdmit": {
           "type": "boolean",
           "markdownDescription": "Whether to highlight processed `admit` commands in a proof.",

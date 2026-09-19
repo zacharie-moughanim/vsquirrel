@@ -292,6 +292,8 @@ var processedErrorProofColor = new vscode.ThemeColor("vsquirrel.proof.error");
 var processedAdmitProofColor = new vscode.ThemeColor("vsquirrel.proof.admit");
 var processedAbortProofColor = new vscode.ThemeColor("vsquirrel.proof.abort");
 
+var webviewFontSize : number | undefined = undefined;
+
 class commandWaitingForProcessingData {
 	command : string;
 	startPos : vscode.Position;
@@ -565,14 +567,14 @@ class SquirrelDocumentProofState {
 	}
 
 	/// Returns proof states in an HTML page, adapted to display in a webview.
-	public updateProofStateInWebview() : void {
+	public updateProofStateInWebview(webviewFontSize : number | undefined) : void {
 		let HTMLProofStateResponses : string = "";
 		let HTMLProofMain : string = "";
 		let CSSColorStart : string;
 		let CSSColorWarning : string;
 		let CSSColorError : string;
 		if (vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast) {
-			CSSColorStart = "#a8fcff"; // TODO see if we can instead use vscode.THemeColor
+			CSSColorStart = "#a8fcff"; // TODO see if we can instead use vscode.ThemeColor
 			CSSColorWarning = "#ffe605";
 			CSSColorError = "#f00000";
 		} else {
@@ -599,6 +601,13 @@ class SquirrelDocumentProofState {
 			height: 50%;
 			overflow: scroll;
 		}`;
+		const fontSizeStyle = (
+			webviewFontSize === undefined ?
+				"" :
+				`#main, #responses {
+					font-size: ${webviewFontSize}pt;
+				}`
+		);
 		if (this.proofStateResponses.length > 0) {
 			for (let response of this.proofStateResponses) {
 				const kind : string = response[0];
@@ -610,6 +619,7 @@ class SquirrelDocumentProofState {
 			for (let goalContent of this.proofStateMain) {
 				HTMLProofMain += `<p> ${goalContent} </p>`;
 			}
+			// Not sure the following assignation is useful.
 			responsesStyle = `#responses {
 			height: 50%;
 				overflow: scroll;
@@ -626,6 +636,7 @@ class SquirrelDocumentProofState {
 				#column {
 					height: 100vh;
 				}
+				${fontSizeStyle}
 				</style>
 				<title>Squirrel Proof</title>
 		</head>
@@ -826,7 +837,7 @@ class SquirrelDocumentProofState {
 				this.moveCursorToEnd();
 				// remove error response in webview
 				this.proofStateResponses = [];
-				this.updateProofStateInWebview();
+				this.updateProofStateInWebview(webviewFontSize);
 				// remove error highlighting
 				this.refreshHighlights();
 			}
@@ -960,7 +971,7 @@ function LSPRecvStdout(data : string) : void {
 								}
 								proofState.refreshHighlights();
 								proofState.waitingForProofProcessing = false;
-								proofState.updateProofStateInWebview();
+								proofState.updateProofStateInWebview(webviewFontSize);
 							}
 						} else {
 							if (Object.hasOwn(objRcvd, "resetResponses")) {
@@ -974,13 +985,13 @@ function LSPRecvStdout(data : string) : void {
 										proofState.commandResponseReceived(/*error = */true, /*moveCursor = */moveCursor);
 									}
 									proofState.refreshHighlights();
-									proofState.updateProofStateInWebview();
+									proofState.updateProofStateInWebview(webviewFontSize);
 								} else {
 									if (!Object.hasOwn(objRcvd, "startSquirrel")) {
 										proofState.commandResponseReceived(/*error = */undefined, /*moveCursor = */moveCursor);
 									}
 									proofState.refreshHighlights();
-									proofState.updateProofStateInWebview();
+									proofState.updateProofStateInWebview(webviewFontSize);
 								}
 							}
 							proofState.waitingForProofProcessing = false;
@@ -1064,10 +1075,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Paths to required software
 	if (DEBUG_MODE) {
-		debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath")}`);
+		debugChannel.appendLine(`Configuration: ${vscode.workspace.getConfiguration("vsquirrel").get("lsp.pythonInterpreterPath")} ||| ${vscode.workspace.getConfiguration("vsquirrel").get("squirrelPath")}`);
 	}
-	const configPythonPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("lsp.pythonInterpreterPath");
-	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration('vsquirrel').get("squirrelPath");
+	const configPythonPath : string | undefined = vscode.workspace.getConfiguration("vsquirrel").get("lsp.pythonInterpreterPath");
+	const configSquirrelPath : string | undefined = vscode.workspace.getConfiguration("vsquirrel").get("squirrelPath");
+	webviewFontSize = vscode.workspace.getConfiguration("vsquirrel").get("webviewFontSize");
 
 	// Finding paths to python and squirrel
 	var pythonPath : string;
@@ -1327,29 +1339,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		},
 	);
-
-	// vscode.window.onDidChangeTextEditorSelection(
-	// 	(event: vscode.TextEditorSelectionChangeEvent) => {
-	// 		const proofState : SquirrelDocumentProofState | undefined = proofStates.get(event.textEditor.document.fileName);
-	// 		if (proofState !== undefined) {
-	// 			let minimalModifiedPoint : vscode.Position | undefined = undefined;
-	// 			for (let contentChange of event.contentChanges) {
-	// 				if (minimalModifiedPoint === undefined) {
-	// 					minimalModifiedPoint = contentChange.range.start;
-	// 				} else {
-	// 					if (minimalModifiedPoint.isAfter(contentChange.range.start)) {
-	// 						minimalModifiedPoint = contentChange.range.start;
-	// 					}
-	// 				}
-	// 			}
-	// 			if (minimalModifiedPoint !== undefined) {
-	// 				if (minimalModifiedPoint.isBefore(proofState.endProofPosition)) {
-	// 					proofState.interpretToPosition(minimalModifiedPoint, false);
-	// 				}
-	// 			}
-	// 		}
-	// 	},
-	// );
 
 	context.subscriptions.push(startProofCmd);
 	context.subscriptions.push(closeProofCmd);
