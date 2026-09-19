@@ -3,6 +3,7 @@
 ## [0.6.0]
 
 - Add setting for font size in webview.
+- Update autoclosing pairs to match squirrel's syntax.
 
 ## [0.5.0]
 
