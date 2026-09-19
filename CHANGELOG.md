@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.6.0]
+
+- Add setting for font size in webview.
+
 ## [0.5.0]
 
 - Explained in more detail possible errors on extension's startup.

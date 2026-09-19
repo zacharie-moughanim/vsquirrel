@@ -25,9 +25,10 @@ Once these are installed, [check here to set up the extension.](#extension-setti
 There are two settings necessary for the extension to work:
 - the path to the compiled squirrel file. Once squirrel is installed and compiled, you can find the path with the command `which squirrel`;
 - the path to a python interpreter. If you have python installed, it's probably `python` or `python3`.
-Then, there are two settings to chose to highlight abandoned/admitted proofs or not:
-- Whether or not to highlight processed `admit` commands;
+Here are the other customization settings that are not required for the extension to work:
+- Whether or not to highlight processed `admit` commands.
 - Whether or not to highlight processed `Abort` commands.
+- The font size of the proof state in webview (goals, etc, that appear on the left handside panel).
 
 ## Extension Colors
 
