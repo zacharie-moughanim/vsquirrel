@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.6.5]
+
+- Fix encoding error in communciation between LSP client and server.
+
 ## [0.6.0]
 
 - Add setting for font size in webview.

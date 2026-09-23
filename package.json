@@ -10,7 +10,7 @@
   ],
   "publisher": "tresml-lang",
   "icon": "./icons/squirrel_logo.png",
-  "version": "0.6.0",
+  "version": "0.6.5",
   "license": "MIT",
   "repository": {
     "type": "git",
