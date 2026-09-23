@@ -13,11 +13,10 @@ var ConvertANSIToHTML = require('ansi-to-html');
 var convertANSIToHTML = new ConvertANSIToHTML();
 
 // Whether to display debug messages
-const DEBUG_MODE : boolean = false;
+const DEBUG_MODE : boolean = true;
 
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
-var client : any;
 
 // The LSP server subprocess
 var lsp_server : ChildProcess;
@@ -920,6 +919,8 @@ var proofStates : Map<string, SquirrelDocumentProofState> = new Map();
 
 /// Proof actual evaluation (interacting with LSP)
 
+import {TextEncoder} from "node:util";
+
 var idx : number = 0;
 /** Sends [msg] to LSP server, computing header on [data] 
  */
@@ -933,12 +934,17 @@ function LSPSend(obj : object, withUniqueId : boolean = false) {
 			obj2.id = idx;
 			idx += 1;
 		}
+		// lsp_server.stdin.write(msg_with_header);
 		const data : string = JSON.stringify(obj2);
-		const msg_with_header : string = `Content-Length: ${data.length}\r\n\r\n${data}`;
-		lsp_server.stdin.write(`${msg_with_header}`);
+		const encoder = new TextEncoder();
+		lsp_server.stdin.setDefaultEncoding("utf-8");
+		const encoded_msg_payload = encoder.encode(data);
+		const msg_header = `Content-Length: ${encoded_msg_payload.length}\r\n\r\n`;
+		lsp_server.stdin.write(encoder.encode(msg_header));
+		lsp_server.stdin.write(encoded_msg_payload);
 		if (DEBUG_MODE) {
-			console.log(`==== Sent ====\n${msg_with_header}\n============`);
-			debugChannel.appendLine(`==== Sent ====\n${msg_with_header}\n============`);
+			console.log(`==== Sent ====\n${msg_header}${data}\n============`);
+			debugChannel.appendLine(`==== Sent ====\n${msg_header}${data}\n============`);
 		}
 	}
 }
@@ -1011,6 +1017,9 @@ function LSPRecvStderr(data : string) : void {
 	} catch (e) {
 		vscode.window.showWarningMessage(data);
 	}
+
+
+
 	if (Object.hasOwn(objRcvd, "method")) {
 		if (objRcvd.method === "pysquirrellsp/lsperror") {
 			// If LSP failed to start squirrel, we remove the corresponding `ProofState` from `proofStates`
