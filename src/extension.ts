@@ -13,7 +13,7 @@ var ConvertANSIToHTML = require('ansi-to-html');
 var convertANSIToHTML = new ConvertANSIToHTML();
 
 // Whether to display debug messages
-const DEBUG_MODE : boolean = true;
+const DEBUG_MODE : boolean = false;
 
 // Console channel for debug messages
 let debugChannel : vscode.OutputChannel;
@@ -919,7 +919,7 @@ var proofStates : Map<string, SquirrelDocumentProofState> = new Map();
 
 /// Proof actual evaluation (interacting with LSP)
 
-import {TextEncoder} from "node:util";
+import { TextEncoder } from "node:util";
 
 var idx : number = 0;
 /** Sends [msg] to LSP server, computing header on [data] 
@@ -1225,10 +1225,10 @@ export function activate(context: vscode.ExtensionContext) {
 			if (prevProofState !== undefined) {
 				vscode.window.showErrorMessage("VSquirrel: Proof already started.");
 			} else {
-					// Creating panel where the goals are displayed
+				// Creating panel where the goals are displayed
 				let proofPanel = vscode.window.createWebviewPanel(
 					"squirrel-prover-proof",
-					`Squirrel ${textEditor.document.fileName}`,
+					`Squirrel ${path.basename(textEditor.document.fileName)}`,
 					{preserveFocus: true, viewColumn: vscode.ViewColumn.Beside}
 				);
 				// Closing proof when the proof panel is closed
