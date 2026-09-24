@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.6.6]
+
+- Webview now displays file name instead of path
+
 ## [0.6.5]
 
 - Fix encoding error in communciation between LSP client and server.
