@@ -61,7 +61,8 @@
     "comments": {
       "begin": "\\(\\*",
       "end": "\\*\\)",
-      "name": "comment.block.squirrel-prover"
+      "name": "comment.block.squirrel-prover",
+      "patterns": [{ "include": "#comments" }]
     },
     "module_inclusion": {
       "match": "include\\b",

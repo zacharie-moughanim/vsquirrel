@@ -100,31 +100,37 @@ function prevCharacterPosition(doc : vscode.TextDocument, from : vscode.Position
 	}
 }
 
+enum nextDotError {
+	noDot,
+	invalidComment
+}
+
 /** Find position of next dot in the [doc] from the position [from], ignoring comments e.g. on [(* a sentence. *) Proof.], it returns the position of the second dot. */
-function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode.Position | undefined {
+function findNextDot(doc : vscode.TextDocument, from : vscode.Position) : vscode.Position | nextDotError {
+	// TODO incorrect: must count comment depth... + also in grammar !
 	var prevChar : string;
 	var curChar : string = "";
 	var curPos : vscode.Position = from;
 	var nextPos : vscode.Position | undefined;
-	var withinComment : boolean = false;
+	var withinComment : boolean = false; // invariant: withinComment == (commentDepth > 0)
+	var commentDepth : number = 0;
 	do {
+		if (commentDepth < 0) {
+			return nextDotError.invalidComment;
+		}
 		nextPos = nextCharacterPosition(doc, curPos);
 		if (nextPos === undefined) {
-			return undefined;
+			return nextDotError.noDot;
 		}
 		prevChar = curChar;
 		curChar = doc.getText(new vscode.Range(curPos, nextPos));
 		curPos = nextPos;
-		if (withinComment) {
-			if (prevChar === "*" && curChar === ")") {
-				withinComment = false;
-			}
-		} else {
-			if (prevChar === "(" && curChar === "*") {
-				withinComment = true;
-			}
+		if (prevChar === "*" && curChar === ")") {
+			--commentDepth;
+		} else if (prevChar === "(" && curChar === "*") {
+			++commentDepth;
 		}
-	} while (!(curChar === '.' && !withinComment));
+	} while (!(curChar === '.' && !(commentDepth > 0)));
 	return nextPos;
 }
 
@@ -784,9 +790,11 @@ class SquirrelDocumentProofState {
 			if (processingPos !== undefined) {
 				fromPos = processingPos;
 			}
-			const nextDotPosition : vscode.Position | undefined = findNextDot(this.editor.document, fromPos);
-			if (nextDotPosition === undefined) {
+			const nextDotPosition : vscode.Position | nextDotError = findNextDot(this.editor.document, fromPos);
+			if (nextDotPosition === nextDotError.noDot) {
 				vscode.window.showErrorMessage("VSquirrel: No dot to get the proof to in the remaining of the document.");
+			} else if (nextDotPosition === nextDotError.invalidComment) {
+				vscode.window.showErrorMessage("VSquirrel: Invalid closing comment before next dot.");
 			} else {
 				const cmdRange : vscode.Range = new vscode.Range(this.lastProcessedProofPosition, nextDotPosition);
 				const bufferProof : string = this.editor.document.getText(cmdRange);

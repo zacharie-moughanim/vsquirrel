@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.6.7]
+
+- Nested comments are now properly highlighted
+- Nested comments are taken into account when searching for next command.
+
 ## [0.6.6]
 
 - Webview now displays file name instead of path
