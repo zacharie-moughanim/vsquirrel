@@ -29,7 +29,7 @@ There are two settings necessary for the extension to work:
 Here are the other customization settings that are not required for the extension to work:
 - Whether or not to highlight processed `admit` commands.
 - Whether or not to highlight processed `Abort` commands.
-- The font size of the proof state in webview (goals, etc, that appear on the left handside panel).
+- The font size of the proof state in webview (goals, etc, that appear on the right handside panel).
 
 ## Extension Colors
 
