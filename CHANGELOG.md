@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.6.8]
+
+- Update README with clearer installation instructions
+- Add "VSquirrel Prover" category to commands.
+
 ## [0.6.7]
 
 - Nested comments are now properly highlighted
