@@ -25,24 +25,29 @@
     "commands": [
       {
         "command": "vsquirrel.startProof",
+        "category": "Squirrel Prover",
         "title": "Start Proof",
         "icon": "$(debug-start)"
       },
       {
         "command": "vsquirrel.closeProof",
+        "category": "Squirrel Prover",
         "title": "Close proof",
         "icon": "$(debug-stop)"
       },
       {
         "command": "vsquirrel.nextProof",
+        "category": "Squirrel Prover",
         "title": "Proof Next Point"
       },
       {
         "command": "vsquirrel.undoProof",
+        "category": "Squirrel Prover",
         "title": "Undo last proof command"
       },
       {
         "command": "vsquirrel.goToProof",
+        "category": "Squirrel Prover",
         "title": "Interpret to the position of the cursor"
       }
     ],
