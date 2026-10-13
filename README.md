@@ -13,7 +13,7 @@ The extension bundles a [LSP server](https://github.com/zacharie-moughanim/pysqu
 
 + You first need to install the Squirrel prover. You can follow installation instructions [here](https://github.com/squirrel-prover/squirrel-prover/#installation).
 + You also need a python interpreter.
-+ You need to install the extension from the marketplace. Via the commande palette (F1) then "Extensions: Install Extensions" and search "vsquirrel" or "vsquirrel prover".
++ You need to install the extension from the marketplace. E.g.via the commande palette (F1) then "Extensions: Install Extensions" and search "vsquirrel" or "vsquirrel prover".
 + Finally, you need to setup paths so the extension can interact with squirrel. In the extension settings:
   + Set "Lsp: Python Interpreter Path" to a path to python, it's probably `python` or `python3`.
   + Set "Squirrel Path" to the path to (the compiled file) squirrel, if you followed the installation instructions for squirrel, you can find with the command `which squirrel`. Write the full path without abbreviations: not `squirrel` or `~/squirrel`, but rather `/path/to/squirrel`.
