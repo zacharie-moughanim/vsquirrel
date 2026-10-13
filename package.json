@@ -10,7 +10,7 @@
   ],
   "publisher": "tresml-lang",
   "icon": "./icons/squirrel_logo.png",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -25,29 +25,29 @@
     "commands": [
       {
         "command": "vsquirrel.startProof",
-        "category": "Squirrel Prover",
+        "category": "VSquirrel Prover",
         "title": "Start Proof",
         "icon": "$(debug-start)"
       },
       {
         "command": "vsquirrel.closeProof",
-        "category": "Squirrel Prover",
+        "category": "VSquirrel Prover",
         "title": "Close proof",
         "icon": "$(debug-stop)"
       },
       {
         "command": "vsquirrel.nextProof",
-        "category": "Squirrel Prover",
+        "category": "VSquirrel Prover",
         "title": "Proof Next Point"
       },
       {
         "command": "vsquirrel.undoProof",
-        "category": "Squirrel Prover",
+        "category": "VSquirrel Prover",
         "title": "Undo last proof command"
       },
       {
         "command": "vsquirrel.goToProof",
-        "category": "Squirrel Prover",
+        "category": "VSquirrel Prover",
         "title": "Interpret to the position of the cursor"
       }
     ],
