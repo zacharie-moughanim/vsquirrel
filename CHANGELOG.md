@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.6.9]
+
+- Fix bug with color of proof goals: now sets to default foreground color, instead of always white (making the proof mode unusable with a white theme).
+- Fix size of webview panel so it fits in the height of the screen.
+
 ## [0.6.8]
 
 - Update README with clearer installation instructions
