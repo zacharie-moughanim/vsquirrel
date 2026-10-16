@@ -10,7 +10,10 @@ const { spawn } = require('node:child_process');
 
 var ConvertANSIToHTML = require('ansi-to-html');
 
-var convertANSIToHTML = new ConvertANSIToHTML();
+var convertANSIToHTML = new ConvertANSIToHTML({
+	fg: "none",
+	newline: "true"
+});
 
 // Whether to display debug messages
 const DEBUG_MODE : boolean = false;
@@ -282,7 +285,7 @@ function substringSearchWithPosition<T extends string[]>(text : string, startTex
 
 /** Convert Squirrel's output to text suitable for HTML */
 function squirrelAsHTML(body : string) : string {
-	return convertANSIToHTML.toHtml(body).replaceAll("\n", "<br/>");
+	return convertANSIToHTML.toHtml(body);
 }
 
 /// PROOFS STATE
@@ -583,8 +586,8 @@ class SquirrelDocumentProofState {
 			CSSColorWarning = "#ffe605";
 			CSSColorError = "#f00000";
 		} else {
-			CSSColorStart = "#135dff";
-			CSSColorWarning = "#ff9100";
+			CSSColorStart = "#0a39a0ff";
+			CSSColorWarning = "#965500ff";
 			CSSColorError = "#f00000";
 		}
 		let responsesStyle : string = `#responses {
@@ -639,7 +642,7 @@ class SquirrelDocumentProofState {
 				${mainStyle}
 				${responsesStyle}
 				#column {
-					height: 100vh;
+					height: 98vh;
 				}
 				${fontSizeStyle}
 				</style>
