@@ -10,8 +10,10 @@ const { spawn } = require('node:child_process');
 
 var ConvertANSIToHTML = require('ansi-to-html');
 
+var foreground_webview_color : string = "#FFF";
+
 var convertANSIToHTML = new ConvertANSIToHTML({
-	fg: "none",
+	fg: foreground_webview_color,
 	newline: true,
 	escapeXML: true
 });
@@ -286,6 +288,30 @@ function substringSearchWithPosition<T extends string[]>(text : string, startTex
 
 /** Convert Squirrel's output to text suitable for HTML display */
 function squirrelAsHTML(body : string) : string {
+	if (
+				(vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light
+		|| vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrastLight)
+		&& (foreground_webview_color === "#FFF")
+	) {
+		foreground_webview_color = "#000";
+		convertANSIToHTML = new ConvertANSIToHTML({
+			fg: foreground_webview_color,
+			newline: true,
+			escapeXML: true
+		});
+	} else if (
+			(vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark
+		|| vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast)
+		&& (foreground_webview_color === "#000")
+	) {
+		foreground_webview_color = "#FFF";
+		convertANSIToHTML = new ConvertANSIToHTML({
+			fg: foreground_webview_color,
+			newline: true,
+			escapeXML: true
+		});
+	}
+
 	return convertANSIToHTML.toHtml(body);
 }
 

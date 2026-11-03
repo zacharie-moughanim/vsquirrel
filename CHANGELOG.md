@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.6.96]
+- Fix minor bug on HTML display
+
 ## [0.6.95]
 - Fix minor bug on HTML display
 
