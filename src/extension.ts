@@ -12,7 +12,8 @@ var ConvertANSIToHTML = require('ansi-to-html');
 
 var convertANSIToHTML = new ConvertANSIToHTML({
 	fg: "none",
-	newline: "true"
+	newline: true,
+	escapeXML: true
 });
 
 // Whether to display debug messages
@@ -198,10 +199,10 @@ function countDotBetween(doc : vscode.TextDocument, from : vscode.Position, to :
 	return cnt;
 }
 
-type Tail<T> =	T extends [infer X, ...infer XS] ? XS : never
+// type Tail<T> =	T extends [infer X, ...infer XS] ? XS : never
 
-/** `Occurrences<[string, ..., string]> = [vscode.Range[], ..., vscode.Range[]]` with as many `vscode.Range[]` as there are `string` in the argument.  */
-type SameLengthArray<T, Y> = { [I in keyof T] : Y };
+// /** `Occurrences<[string, ..., string]> = [vscode.Range[], ..., vscode.Range[]]` with as many `vscode.Range[]` as there are `string` in the argument.  */
+// type SameLengthArray<T, Y> = { [I in keyof T] : Y };
 
 // function mapTypeSafe<T extends SameLengthArray<T, X>, X, Y>(arr : T, callbackfn: (value : X, index: number, array: X[]) => Y) : SameLengthArray<T, X> {
 // 	let x : SameLengthArray<T, X> =  arr;
@@ -283,7 +284,7 @@ function substringSearchWithPosition<T extends string[]>(text : string, startTex
 
 /// Squirrel's output pretty-printing
 
-/** Convert Squirrel's output to text suitable for HTML */
+/** Convert Squirrel's output to text suitable for HTML display */
 function squirrelAsHTML(body : string) : string {
 	return convertANSIToHTML.toHtml(body);
 }
