@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.6.95]
+- Fix minor bug on HTML display
+
 ## [0.6.9]
 
 - Fix bug with color of proof goals: now sets to default foreground color, instead of always white (making the proof mode unusable with a white theme).
