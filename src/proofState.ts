@@ -118,23 +118,33 @@ export class SquirrelDocumentProofState {
 		waitingForProofProcessing = false,
 		decorationProcessingProof = vscode.window.createTextEditorDecorationType({
       backgroundColor : processingProofColor,
-      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed
+      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed,
+			overviewRulerColor : processingProofColor,
+			overviewRulerLane: vscode.OverviewRulerLane.Center
     }),
 		decorationProcessedProof = vscode.window.createTextEditorDecorationType({
       backgroundColor : processedProofColor,
-      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed
+      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed,
+			overviewRulerColor : processedProofColor,
+			overviewRulerLane: vscode.OverviewRulerLane.Center
     }),
 		decorationErrorProof = vscode.window.createTextEditorDecorationType({
       backgroundColor : processedErrorProofColor,
-      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed
+      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed,
+			overviewRulerColor : processedErrorProofColor,
+			overviewRulerLane: vscode.OverviewRulerLane.Center
     }),
 		decorationAdmitProof = vscode.window.createTextEditorDecorationType({
       backgroundColor : processedAdmitProofColor,
-      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed
+      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed,
+			overviewRulerColor : processedAdmitProofColor,
+			overviewRulerLane: vscode.OverviewRulerLane.Right
     }),
 		decorationAbortProof = vscode.window.createTextEditorDecorationType({
       backgroundColor : processedAbortProofColor,
-      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed
+      rangeBehavior : vscode.DecorationRangeBehavior.ClosedClosed,
+			overviewRulerColor : processedAbortProofColor,
+			overviewRulerLane: vscode.OverviewRulerLane.Right
     })
 	) {
 		this.editor = editor;
