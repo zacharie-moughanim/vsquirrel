@@ -10,7 +10,7 @@
   ],
   "publisher": "tresml-lang",
   "icon": "./icons/squirrel_logo.png",
-  "version": "0.6.96",
+  "version": "0.7.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -118,6 +118,12 @@
           "markdownDescription": "Whether to highlight processed `Abort` commands in a proof.",
           "default": "true",
           "order": 3
+        },
+        "vsquirrel.decorateRuler": {
+          "type": "boolean",
+          "markdownDescription": "Whether to decorate with highlights color the scrollbar of the editor.",
+          "default": "true",
+          "order": 4
         }
       }
     },

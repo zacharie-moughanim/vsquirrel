@@ -309,6 +309,8 @@ export class LSPHandle {
       proofState.decorationErrorProof.dispose();
       proofState.decorationProcessedProof.dispose();
       proofState.decorationProcessingProof.dispose();
+      proofState.decorationAbortProof.dispose();
+      proofState.decorationAdmitProof.dispose();
       return true;
     }
     return false;

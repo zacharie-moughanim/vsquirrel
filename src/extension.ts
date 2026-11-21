@@ -116,7 +116,10 @@ export function activate(context: vscode.ExtensionContext) {
 						proofPanel,
 						(msg : Object) => { lspServerHandle.LSPSend(msg, true); },
 						(msg : string) => { console.log(msg); debugChannel.appendLine(msg); },
-						vscode.workspace.getConfiguration("vsquirrel").get("webviewFontSize")
+						vscode.workspace.getConfiguration("vsquirrel").get("webviewFontSize"), // vsquirrel.rulerDecoration
+						vscode.workspace.getConfiguration('vsquirrel').get("highlightAdmit"),
+						vscode.workspace.getConfiguration('vsquirrel').get("highlightAbort"),
+						vscode.workspace.getConfiguration("vsquirrel").get("decorateRuler")
 					)
 				);
 				lspServerHandle.LSPSend({method:"pysquirrellsp/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);

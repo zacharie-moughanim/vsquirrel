@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.7.0]
+- Add more decoration options
+- minor bug fix
+
 ## [0.6.96]
 - Fix minor bug on HTML display
 
