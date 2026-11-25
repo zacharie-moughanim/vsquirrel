@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.7.5]
+- Fix include bug: now fetch includes in current workspace too (in addition to /path/to/squirrel/theories folder). If no workspace is active, defaults to the extension path (may changed in future update).
+
 ## [0.7.0]
 - Add more decoration options
 - minor bug fix

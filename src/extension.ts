@@ -5,6 +5,7 @@ import { debug } from 'console';
 
 import { SquirrelDocumentProofState } from './proofState';
 import { LSPHandle } from './lspHandle';
+import { text } from 'stream/consumers';
 
 // Whether to display debug messages
 const DEBUG_MODE : boolean = false;
@@ -122,7 +123,16 @@ export function activate(context: vscode.ExtensionContext) {
 						vscode.workspace.getConfiguration("vsquirrel").get("decorateRuler")
 					)
 				);
-				lspServerHandle.LSPSend({method:"pysquirrellsp/startProof", pathToSquirrel: squirrelPath, documentId: textEditor.document.fileName}, true);
+				let openProofLSPMsgObj : any = {
+					method:"pysquirrellsp/startProof",
+					pathToSquirrel: squirrelPath,
+					documentId: textEditor.document.fileName
+				};
+				let mayActiveWorkspaceFolder : vscode.WorkspaceFolder | undefined = vscode.workspace.getWorkspaceFolder(textEditor.document.uri);
+				if (mayActiveWorkspaceFolder !== undefined) {
+					openProofLSPMsgObj["proofWorkingDirectory"] = mayActiveWorkspaceFolder.uri.fsPath;
+				}
+				lspServerHandle.LSPSend(openProofLSPMsgObj, true);
 			}
 		}
 	);
